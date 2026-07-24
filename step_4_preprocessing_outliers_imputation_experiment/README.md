@@ -64,6 +64,16 @@ panel's flat, non-drifting line across runs are the direct visual evidence that
 the advantage is a stable property of the method, not an artefact of any one
 random mask.
 
+### Why MICE wins — a single representative run
+
+![MICE reconstruction](graphs/imputation_reconstruction.png)
+
+Plotting reconstructed against true values for one run makes the mechanism
+visible: MICE's points track the diagonal (predicted = true, R² ≈ 0.95), while
+the median baseline collapses to a **flat horizontal line** — it returns the same
+value for every masked cell, ignoring the feature structure entirely (R² ≈ 0).
+This is the intuition behind the 25-run numbers above.
+
 ---
 
 ## 3. Outlier detection
@@ -114,7 +124,7 @@ participation is significantly higher (Math p=1.4e-05, English p=1.4e-11).
 - [x] Isolation Forest + LOF run on the expanded 9-feature space; 49 consensus outliers flagged (not deleted).
 - [x] Exploratory Q1 (subject resilience) and Q2 (low-SES overachievers) computed
       with significance testing.
-- [x] 4/4 plots saved.
+- [x] 5/5 plots saved (incl. the reconstruction scatter that shows *why* MICE beats the median).
 - [x] `cleaned_modeling_ready.csv` (3,731 × 54) written.
 
 **Status: Step 4 complete ✔**

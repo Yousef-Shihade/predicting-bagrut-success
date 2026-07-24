@@ -152,3 +152,62 @@ def plot_robustness(result: dict[str, Any], out_dir: Path) -> Path:
     fig.savefig(path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     return path
+
+
+def plot_reconstruction_scatter(df: pd.DataFrame, cfg: dict[str, Any], out_dir: Path) -> Path:
+    """Reconstructed-vs-true scatter for one representative masking run.
+
+    Complements the multi-iteration robustness view by showing *why* MICE wins:
+    MICE points track the diagonal (perfect reconstruction), while the median
+    baseline collapses to a flat horizontal line because it returns one value for
+    every masked cell, ignoring the feature structure.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    ie = cfg["imputation_experiment"]
+    target = ie["target_feature"]
+    seed = cfg["seed"]
+
+    data = df[df[target].notna()].copy()
+    X = data[ie["predictors"]].astype(float).reset_index(drop=True)
+    truth = X[target].to_numpy().copy()
+    rng = np.random.default_rng(seed)
+    n = len(X)
+    n_mask = int(round(n * ie["mask_fraction"]))
+    mask_bool = np.zeros(n, dtype=bool)
+    mask_bool[rng.choice(n, size=n_mask, replace=False)] = True
+    X_masked = X.copy()
+    X_masked.loc[mask_bool, target] = np.nan
+    true_masked = truth[mask_bool]
+
+    mice = IterativeImputer(estimator=BayesianRidge(), max_iter=ie["mice_max_iter"],
+                            random_state=seed, sample_posterior=False)
+    mice_pred = mice.fit_transform(X_masked)[:, X.columns.get_loc(target)][mask_bool]
+    median_pred = SimpleImputer(strategy="median").fit_transform(
+        X_masked[[target]]).ravel()[mask_bool]
+
+    mice_r2 = _metrics(mice_pred, true_masked)["R2"]
+    median_r2 = _metrics(median_pred, true_masked)["R2"]
+
+    lo = float(min(true_masked.min(), mice_pred.min()))
+    hi = float(max(true_masked.max(), mice_pred.max()))
+    pad = 0.05 * (hi - lo)
+
+    fig, ax = plt.subplots(figsize=(7.2, 6.2))
+    ax.plot([lo - pad, hi + pad], [lo - pad, hi + pad], ls="--", color=NAVY,
+            lw=1.5, zorder=1, label="perfect reconstruction")
+    median_lbl = ("$R^2 \\approx 0$" if abs(median_r2) < 0.01
+                  else f"$R^2 = {median_r2:.2f}$")
+    ax.scatter(true_masked, median_pred, s=22, color=CORAL, alpha=0.55,
+               edgecolor="none", zorder=2, label=f"Median fill  ({median_lbl})")
+    ax.scatter(true_masked, mice_pred, s=22, color=TEAL, alpha=0.6,
+               edgecolor="none", zorder=3, label=f"MICE  ($R^2 = {mice_r2:.2f}$)")
+    ax.set_xlabel("True socioeconomic index value")
+    ax.set_ylabel("Reconstructed value")
+    ax.set_title(f"Reconstructing {int(round(ie['mask_fraction']*100))}% masked "
+                 f"values ({n_mask} cells)", fontsize=15, color=NAVY)
+    ax.legend(loc="upper left", fontsize=11, framealpha=0.9)
+    fig.tight_layout()
+    path = out_dir / "imputation_reconstruction.png"
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return path

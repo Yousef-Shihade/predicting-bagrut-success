@@ -74,6 +74,7 @@ def main() -> None:
     mice_result["runs"].to_csv(resolve(cfg["paths"]["mice_runs_out"]), index=False,
                                encoding=cfg["io"]["encoding"])
     robustness_plot = imp.plot_robustness(mice_result, graphs)
+    recon_plot = imp.plot_reconstruction_scatter(df, cfg, graphs)
     print(f"    saved per-run detail: {Path(cfg['paths']['mice_runs_out']).name}")
 
     # ---------------- Outlier detection ------------------------------ #
@@ -109,7 +110,7 @@ def main() -> None:
           f"({out_path.stat().st_size/1024/1024:.2f} MB)")
 
     print("\n[PLOTS]")
-    for p in [robustness_plot, outlier_plot, q1_plot, q2_plot]:
+    for p in [robustness_plot, recon_plot, outlier_plot, q1_plot, q2_plot]:
         print(f"    - {p.name:38s} ({p.stat().st_size/1024:6.1f} KB)")
 
     print("\n" + _hr())
