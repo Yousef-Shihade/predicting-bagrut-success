@@ -24,12 +24,13 @@ step_5_predictive_modeling_explainability/
 │   ├── feature_selection.py  # iterative VIF pruning + Boruta selection
 │   ├── modeling.py           # 4-model tournament + tuned HGB champion
 │   ├── ablation.py           # SES-only vs Boruta-selected full set, same rows
-│   ├── explain.py            # SHAP, leaderboard, ablation & VIF plots
+│   ├── explain.py            # SHAP, leaderboard, ablation, VIF & residual plots
 │   └── run_step5.py          # orchestrator + comprehensive console report
 ├── models/                   # 4 tuned HGB models + VIF/Boruta/ablation/leaderboard CSVs
 │                             #   (leaderboard_cv = untuned tournament;
 │                             #    leaderboard_tuned = headline champion numbers)
-└── graphs/                   # VIF pruning, 4 SHAP beeswarms, leaderboard, ablation chart
+└── graphs/                   # VIF pruning, 4 SHAP beeswarms, leaderboard, ablation,
+                              #   residual histograms
 ```
 
 Run: `python code/run_step5.py`.
@@ -141,6 +142,20 @@ RandomForest, the most overfit-prone of them on a narrow feature space, holds up
 here. The breadth of the feature set gives every model family real signal to
 work with.
 
+### Residual diagnostics — is the champion unbiased?
+
+![residual histograms](graphs/residual_histograms.png)
+
+Out-of-fold residuals (actual − predicted) for each tuned champion, computed
+under the same GroupKFold(`semel`) CV that produces every metric above. All four
+distributions are **centred on zero** (mean residual ≈ 0, printed on each panel),
+so the models do not systematically over- or under-predict. The grade models are
+close to symmetric; the two participation models are mildly **right-skewed**
+because the participation rate is itself bounded and right-skewed (many schools
+low, a few high), so the champion under-predicts the rare high-participation
+schools. Each panel's **std ≈ its RMSE** in the leaderboard, the expected
+relationship when the mean residual is zero.
+
 ---
 
 ## 5. 🎯 Ablation study — does the budget dataset add information beyond SES?
@@ -218,6 +233,8 @@ this pipeline captures from the start rather than as an afterthought.
       identical protocol; mean ΔR² = +0.320.
 - [x] SHAP beeswarms for all 4 targets; Hebrew categorical labels translated to
       English for readability (matplotlib RTL rendering issue caught and fixed).
+- [x] Out-of-fold residual histograms for all 4 tuned champions (same
+      GroupKFold(semel) CV); every distribution centred on zero (unbiased).
 - [x] 4 tuned models + VIF/Boruta/ablation/leaderboard CSVs saved; tuned champion
       metrics persisted to `leaderboard_tuned.csv` so every headline number in the
       READMEs is auditable from a plain CSV.

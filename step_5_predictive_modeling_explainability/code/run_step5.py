@@ -105,6 +105,7 @@ def main() -> None:
     tuned_store: dict[str, dict] = {}
     boruta_rows = []
     ablation_rows = []
+    resid_inputs: dict[str, dict] = {}
     plots: list[Path] = []
 
     for target in targets:
@@ -140,6 +141,10 @@ def main() -> None:
         model_path = models_dir / f"{target}_hgb.joblib"
         joblib.dump({"model": tuned["best_estimator"], "features": list(Xsel.columns),
                     "target": target, "cv_metrics": tm}, model_path)
+
+        # Keep the champion + its data for the out-of-fold residual diagnostic.
+        resid_inputs[target] = {"estimator": tuned["best_estimator"], "X": Xsel,
+                                "y": y, "groups": groups, "r2": tm["R2"]}
 
         # ----- SHAP ----- #
         plots.append(explain.shap_beeswarm(tuned["best_estimator"], Xsel, target, cfg, graphs))
@@ -181,6 +186,9 @@ def main() -> None:
     ablation_df.to_csv(resolve(cfg["paths"]["ablation_out"]), index=False,
                        encoding=cfg["io"]["encoding"])
     plots.append(explain.plot_before_after(ablation_df, graphs))
+
+    # Out-of-fold residual diagnostic for the tuned champions (report §6).
+    plots.append(explain.plot_residual_histograms(resid_inputs, cfg, graphs))
 
     # ---------------- final report --------------------------------------------- #
     print("\n" + _hr())
