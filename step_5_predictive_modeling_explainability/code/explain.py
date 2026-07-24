@@ -192,18 +192,34 @@ def plot_shap_core_ranking(importances: dict[str, pd.Series], out_dir: Path) -> 
     long = pd.DataFrame(rows)
     order = (long.groupby("feature")["share"].mean()
              .sort_values(ascending=False).index.tolist())
+    targets = list(importances.keys())
 
-    fig, ax = plt.subplots(figsize=(12.4, 7.4))
-    sns.barplot(data=long, y="feature", x="share", hue="target", order=order,
-                palette=[NAVY, TEAL, CORAL, GOLD], ax=ax)
-    ax.set_xlabel("Share of total mean |SHAP| for that target  (%)")
-    ax.set_ylabel("")
-    ax.set_title("Feature importance across all four targets (SHAP)\n"
-                 "the school-level nurture index leads everywhere, "
-                 "municipal cluster sits near the bottom",
-                 fontsize=14, color=NAVY)
-    ax.legend(title="Target", fontsize=10, title_fontsize=10.5, loc="lower right")
-    fig.tight_layout()
+    # One small-multiple panel per target: 40 bars in a single grouped chart is
+    # unreadable, whereas four 10-bar panels sharing an x-axis compare cleanly.
+    fig, axes = plt.subplots(2, 2, figsize=(12.2, 7.4), sharex=True)
+    xmax = long["share"].max() * 1.16
+    for ax, target in zip(axes.flat, targets):
+        sub = long[long["target"] == target].set_index("feature").reindex(order)
+        colors = [NAVY if f == "nurture_quintile" else (CORAL if f == "cluster" else TEAL)
+                  for f in order]
+        ypos = np.arange(len(order))
+        ax.barh(ypos, sub["share"].to_numpy(), color=colors, height=0.70, alpha=0.9)
+        for i, v in enumerate(sub["share"].to_numpy()):
+            ax.text(v + 0.8, i, f"{v:.1f}", va="center", fontsize=12, color="#333333")
+        ax.set_yticks(ypos)
+        ax.set_yticklabels(order, fontsize=12.5)
+        ax.invert_yaxis()
+        ax.set_title(TARGET_LABELS.get(target, target), fontsize=15, color=NAVY, pad=6)
+        ax.set_xlim(0, xmax)
+        ax.tick_params(axis="x", labelsize=11.5)
+        ax.grid(axis="y", visible=False)
+    for ax in axes[1]:
+        ax.set_xlabel("Share of that target's total mean |SHAP|  (%)", fontsize=13)
+
+    fig.suptitle("Feature importance per target (SHAP, shared 10-feature core)\n"
+                 "navy = school-level nurture index, red = municipal cluster",
+                 fontsize=16, color=NAVY, y=1.01)
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
     path = out_dir / "shap_core_ranking.png"
     fig.savefig(path, dpi=150, bbox_inches="tight")
     plt.close(fig)
