@@ -262,6 +262,11 @@ full SES+Budget feature set.
 
 ![Model leaderboard](step_5_predictive_modeling_explainability/graphs/models_performance.png)
 
+**Residual diagnostics** — out-of-fold residuals for every tuned champion are
+centred on zero (unbiased), with each target's spread matching its RMSE.
+
+![Residual histograms](step_5_predictive_modeling_explainability/graphs/residual_histograms.png)
+
 **SHAP explainability** — for the target least explained by SES alone
 (`math_5unit_participation`), school-level attributes (`nurture_quintile`,
 `log_school_size`, `transport_per_student`) outrank the municipal cluster.

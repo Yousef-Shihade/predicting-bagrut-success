@@ -127,7 +127,7 @@ def plot_residual_histograms(resid_inputs: dict[str, dict], cfg: dict[str, Any],
     out_dir.mkdir(parents=True, exist_ok=True)
     n_splits = cfg["modeling"]["cv_splits"]
 
-    fig, axes = plt.subplots(2, 2, figsize=(12.6, 9.0))
+    fig, axes = plt.subplots(2, 2, figsize=(12.8, 7.6))
     for ax, (target, d) in zip(axes.flat, resid_inputs.items()):
         gkf = GroupKFold(n_splits=n_splits)
         y_pred = cross_val_predict(clone(d["estimator"]), d["X"], d["y"],
@@ -157,12 +157,12 @@ def plot_residual_histograms(resid_inputs: dict[str, dict], cfg: dict[str, Any],
         Line2D([0], [0], color=GREY, lw=1.6, ls="--", label="Zero error (target)"),
         Line2D([0], [0], color=CORAL, lw=2.2, label="Mean residual"),
     ]
+    fig.tight_layout(rect=(0, 0, 1, 0.88))
     fig.legend(handles=legend_handles, loc="upper center", ncol=3,
-               frameon=False, fontsize=11.5, bbox_to_anchor=(0.5, 0.965))
+               frameon=False, fontsize=11, bbox_to_anchor=(0.5, 0.925))
     fig.suptitle("Out-of-fold residual distributions — tuned HistGradientBoosting champion\n"
                  "all centred on zero, confirming an unbiased fit (GroupKFold by school)",
-                 fontsize=14.5, color=NAVY, y=1.02)
-    fig.tight_layout(rect=(0, 0, 1, 0.93))
+                 fontsize=13.5, color=NAVY, y=0.995)
     path = out_dir / "residual_histograms.png"
     fig.savefig(path, dpi=150, bbox_inches="tight")
     plt.close(fig)
