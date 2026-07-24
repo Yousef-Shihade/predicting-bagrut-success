@@ -267,6 +267,12 @@ centred on zero (unbiased), with each target's spread matching its RMSE.
 
 ![Residual histograms](step_5_predictive_modeling_explainability/graphs/residual_histograms.png)
 
+**SHAP across all four targets** — the school-level `nurture_quintile` leads
+every outcome (22.7%–40.8% of attribution), while municipal `cluster` never
+exceeds 4.9%. Same construct, different granularity.
+
+![SHAP core ranking](step_5_predictive_modeling_explainability/graphs/shap_core_ranking.png)
+
 **SHAP explainability** — for the target least explained by SES alone
 (`math_5unit_participation`), school-level attributes (`nurture_quintile`,
 `log_school_size`, `transport_per_student`) outrank the municipal cluster.

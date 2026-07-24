@@ -169,6 +169,47 @@ def plot_residual_histograms(resid_inputs: dict[str, dict], cfg: dict[str, Any],
     return path
 
 
+def plot_shap_core_ranking(importances: dict[str, pd.Series], out_dir: Path) -> Path:
+    """Mean |SHAP| share of the shared 10-feature core, compared across targets.
+
+    Each target's SHAP importances are normalised to a share of that target's
+    total, which makes them comparable even though the four outcomes live on
+    different scales. Restricting the view to the core features confirmed for
+    ALL four targets gives a fair like-for-like ranking and answers the study's
+    question directly: does municipal ``cluster`` or a school-level attribute
+    carry the weight?
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    core = [f for f in importances[next(iter(importances))].index
+            if all(f in imp.index for imp in importances.values())]
+
+    rows = []
+    for target, imp in importances.items():
+        total = float(imp.sum())
+        for feat in core:
+            rows.append({"feature": feat, "target": target,
+                         "share": 100.0 * float(imp[feat]) / total})
+    long = pd.DataFrame(rows)
+    order = (long.groupby("feature")["share"].mean()
+             .sort_values(ascending=False).index.tolist())
+
+    fig, ax = plt.subplots(figsize=(12.4, 7.4))
+    sns.barplot(data=long, y="feature", x="share", hue="target", order=order,
+                palette=[NAVY, TEAL, CORAL, GOLD], ax=ax)
+    ax.set_xlabel("Share of total mean |SHAP| for that target  (%)")
+    ax.set_ylabel("")
+    ax.set_title("Feature importance across all four targets (SHAP)\n"
+                 "the school-level nurture index leads everywhere, "
+                 "municipal cluster sits near the bottom",
+                 fontsize=14, color=NAVY)
+    ax.legend(title="Target", fontsize=10, title_fontsize=10.5, loc="lower right")
+    fig.tight_layout()
+    path = out_dir / "shap_core_ranking.png"
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
 def plot_vif_pruning(vif_result: dict[str, Any], out_dir: Path) -> Path:
     """Initial VIF (with the offending features highlighted) — collinearity story."""
     out_dir.mkdir(parents=True, exist_ok=True)

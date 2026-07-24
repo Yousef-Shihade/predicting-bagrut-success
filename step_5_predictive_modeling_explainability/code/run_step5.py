@@ -106,6 +106,7 @@ def main() -> None:
     boruta_rows = []
     ablation_rows = []
     resid_inputs: dict[str, dict] = {}
+    shap_importances: dict[str, pd.Series] = {}
     plots: list[Path] = []
 
     for target in targets:
@@ -148,6 +149,10 @@ def main() -> None:
 
         # ----- SHAP ----- #
         plots.append(explain.shap_beeswarm(tuned["best_estimator"], Xsel, target, cfg, graphs))
+        shap_importances[target] = explain.shap_importance(tuned["best_estimator"], Xsel,
+                                                           target, cfg)
+        top3 = ", ".join(f"{f} ({v:.3f})" for f, v in shap_importances[target].head(3).items())
+        print(f"    SHAP top-3 (mean |SHAP|): {top3}")
 
         # ----- Ablation: SES-only vs Boruta-selected full set, SAME rows ----- #
         sel_num, sel_cat = _map_selected_to_original(bor["selected"], numeric_candidates,
@@ -189,6 +194,9 @@ def main() -> None:
 
     # Out-of-fold residual diagnostic for the tuned champions (report §6).
     plots.append(explain.plot_residual_histograms(resid_inputs, cfg, graphs))
+
+    # Cross-target SHAP ranking of the shared core features (report §7).
+    plots.append(explain.plot_shap_core_ranking(shap_importances, graphs))
 
     # ---------------- final report --------------------------------------------- #
     print("\n" + _hr())

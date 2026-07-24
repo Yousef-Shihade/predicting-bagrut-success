@@ -197,6 +197,24 @@ Boruta confirms carry real, independent predictive signal.
 
 ## 6. SHAP explainability
 
+### Cross-target ranking — what carries the weight everywhere
+
+![SHAP core ranking](graphs/shap_core_ranking.png)
+
+Mean |SHAP| for the **10-feature shared core**, expressed as a share of each
+target's total so the four outcomes are comparable on one scale. The
+school-level **`nurture_quintile`** (the Ministry's per-school educational
+disadvantage index) is the **top feature for all four targets** (22.7%–40.8%),
+while municipal **`cluster`** contributes only **1.8%–4.9%** — the weakest core
+feature on average, and the weakest outright for both English targets. Both
+measure socioeconomic standing, so the contrast is about **granularity**: the
+school-level measure carries the signal the municipal average washes out.
+`transport_per_student` ranks 2nd or 3rd for every target, and
+`log_school_size` is especially strong for advanced Math participation (19.8%),
+where cohort size is what makes opening a 5-unit class viable.
+
+### Per-target detail
+
 ![SHAP example](graphs/shap_beeswarm_math_5unit_participation.png)
 
 For `math_5unit_participation` — the target municipal SES explains least
@@ -235,6 +253,9 @@ this pipeline captures from the start rather than as an afterthought.
       English for readability (matplotlib RTL rendering issue caught and fixed).
 - [x] Out-of-fold residual histograms for all 4 tuned champions (same
       GroupKFold(semel) CV); every distribution centred on zero (unbiased).
+- [x] Cross-target SHAP ranking of the shared core (`shap_core_ranking.png`):
+      school-level `nurture_quintile` leads all 4 targets, municipal `cluster`
+      never exceeds 4.9%.
 - [x] 4 tuned models + VIF/Boruta/ablation/leaderboard CSVs saved; tuned champion
       metrics persisted to `leaderboard_tuned.csv` so every headline number in the
       READMEs is auditable from a plain CSV.
