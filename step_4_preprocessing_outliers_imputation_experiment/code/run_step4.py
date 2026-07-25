@@ -73,6 +73,18 @@ def main() -> None:
 
     mice_result["runs"].to_csv(resolve(cfg["paths"]["mice_runs_out"]), index=False,
                                encoding=cfg["io"]["encoding"])
+
+    # Same protocol, with the near-duplicate `cluster` and the outcome columns
+    # withheld, so the headline advantage can be read without them.
+    variants = imp.run_predictor_variants(df, cfg)
+    variants.to_csv(resolve(cfg["paths"]["mice_variants_out"]), index=False,
+                    encoding=cfg["io"]["encoding"])
+    print("\n    predictor-set variants (same 25-mask protocol):")
+    for _, r in variants.iterrows():
+        print(f"      {r['variant']:22s} drop[{r['dropped']:<28s}] "
+              f"MICE R²={r['MICE_R2_mean']:+.3f}±{r['MICE_R2_std']:.3f}  "
+              f"RMSE={r['MICE_RMSE_mean']:.3f}  "
+              f"beats median {int(r['MICE_wins'])}/{int(r['n_runs'])}")
     robustness_plot = imp.plot_robustness(mice_result, graphs)
     recon_plot = imp.plot_reconstruction_scatter(df, cfg, graphs)
     print(f"    saved per-run detail: {Path(cfg['paths']['mice_runs_out']).name}")

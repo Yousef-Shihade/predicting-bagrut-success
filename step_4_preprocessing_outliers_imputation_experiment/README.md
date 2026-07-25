@@ -57,6 +57,28 @@ included, so the test reflects the dataset the models will actually see.
 
 **MICE outperformed the median baseline on all 25/25 runs.**
 
+### How much of that is the near-duplicate `cluster`?
+
+The headline run uses every available predictor, which is the realistic
+imputation setting — but `cluster` is a 1–10 discretisation of the very feature
+being reconstructed (**r = 0.97**), and the predictor set also contains the four
+outcome variables. Re-running the identical 25-mask protocol with those columns
+withheld shows how much of the advantage survives without them
+(`data/mice_predictor_variants.csv`):
+
+| Variant | Predictors | MICE R² | RMSE | Beats median |
+|---|--:|--:|--:|--:|
+| **full** (headline) | 14 | **0.954 ± 0.006** | 0.199 | 25/25 |
+| no_targets | 10 | 0.953 ± 0.006 | 0.200 | 25/25 |
+| no_cluster | 13 | **0.340 ± 0.053** | 0.750 | 25/25 |
+| no_cluster_no_targets | 9 | **0.331 ± 0.056** | 0.755 | 25/25 |
+
+Two honest conclusions. Dropping the four **targets** changes essentially nothing
+(0.954 → 0.953), so they were never doing the work. Dropping **`cluster`**
+collapses R² from 0.95 to 0.34, so the headline figure is largely that proxy.
+**MICE still beats the median baseline 25/25 in every variant**, so the mandated
+comparison holds regardless — only the magnitude was inflated.
+
 ![MICE robustness](graphs/mice_robustness_multi_iteration.png)
 
 The left panel's tight boxplot (std = 0.006, about 0.6% of the mean) and the right

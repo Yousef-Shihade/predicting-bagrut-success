@@ -28,6 +28,7 @@ paths:
   out_graphs:      "graphs"
   cleaned_out:     "data/cleaned_modeling_ready.csv"
   mice_runs_out:   "data/mice_robustness_runs.csv"
+  mice_variants_out: "data/mice_predictor_variants.csv"
 
 io:
   encoding: "utf-8-sig"
@@ -64,6 +65,19 @@ imputation_experiment:
     - "avg_class_size"
     - "nurture_quintile"
     - "special_ed_share"
+  # The headline run above keeps every available predictor, which is the
+  # realistic setting. It is however flattered by `cluster`, a 1-10 discretisation
+  # of the very feature being reconstructed (r = 0.97), and it includes the four
+  # outcome variables. These variants re-run the identical protocol with those
+  # predictors withheld, so the reported advantage can be read without the
+  # near-duplicate doing the work. Results -> data/mice_predictor_variants.csv
+  variants:
+    full: []                                        # drop nothing (headline)
+    no_cluster: ["cluster"]
+    no_targets: ["math_avg_grade", "english_avg_grade",
+                 "math_5unit_participation", "english_5unit_participation"]
+    no_cluster_no_targets: ["cluster", "math_avg_grade", "english_avg_grade",
+                            "math_5unit_participation", "english_5unit_participation"]
 
 # --- Outlier detection (unchanged method, richer feature space) -----
 outliers:

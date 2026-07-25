@@ -195,6 +195,57 @@ def plot_residual_histograms(resid_inputs: dict[str, dict], cfg: dict[str, Any],
     return path
 
 
+def plot_nested_residuals(oof: pd.DataFrame, out_dir: Path,
+                          targets: list[str] | None = None) -> Path:
+    """Residual distributions built from NESTED out-of-fold predictions.
+
+    ``oof`` is the table written by run_nested_cv.py (columns: target, model,
+    y_true, y_pred). Because those predictions come from outer folds whose rows
+    were never seen during feature selection or tuning, this diagnostic reflects
+    the same honest protocol as the reported leaderboard.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    targets = targets or list(dict.fromkeys(oof["target"]))
+
+    fig, axes = plt.subplots(2, 2, figsize=(12.8, 7.6))
+    for ax, target in zip(axes.flat, targets):
+        sub = oof[oof["target"] == target]
+        resid = sub["y_true"].to_numpy() - sub["y_pred"].to_numpy()
+        mean_r, std_r = float(resid.mean()), float(resid.std())
+        model = sub["model"].iloc[0]
+
+        sns.histplot(resid, bins=34, kde=True, color=TEAL, edgecolor="white",
+                     linewidth=0.6, alpha=0.85, ax=ax)
+        if ax.lines:
+            ax.lines[-1].set_color(NAVY)
+            ax.lines[-1].set_linewidth(2.0)
+        ax.axvline(0, color=GREY, ls="--", lw=1.6)
+        ax.axvline(mean_r, color=CORAL, ls="-", lw=2.2)
+        ax.set_title(f"{TARGET_LABELS.get(target, target)}   ({model})",
+                     fontsize=13, color=NAVY, pad=6)
+        ax.set_xlabel("Residual (actual − predicted)", fontsize=11.5)
+        ax.set_ylabel("Number of schools", fontsize=11.5)
+        ax.tick_params(labelsize=10.5)
+        ax.text(0.035, 0.94, f"mean = {mean_r:+.3f}\nsd = {std_r:.3f}",
+                transform=ax.transAxes, va="top", ha="left", fontsize=10.5,
+                bbox=dict(boxstyle="round,pad=0.35", fc="white", ec=GREY, alpha=0.9))
+
+    handles = [
+        Line2D([0], [0], color=NAVY, lw=2.0, label="Distribution (KDE)"),
+        Line2D([0], [0], color=GREY, lw=1.6, ls="--", label="Zero error"),
+        Line2D([0], [0], color=CORAL, lw=2.2, label="Mean residual"),
+    ]
+    fig.tight_layout(rect=(0, 0, 1, 0.90))
+    fig.legend(handles=handles, loc="upper center", ncol=3, frameon=False,
+               fontsize=11, bbox_to_anchor=(0.5, 0.945))
+    fig.suptitle("Nested out-of-fold residual distributions (selected model per target)",
+                 fontsize=14, color=NAVY, y=0.995)
+    path = out_dir / "residuals_nested.png"
+    fig.savefig(path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
 def plot_shap_core_ranking(importances: dict[str, pd.Series], out_dir: Path) -> Path:
     """Mean |SHAP| share of the shared 10-feature core, compared across targets.
 

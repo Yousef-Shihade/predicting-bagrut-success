@@ -114,6 +114,51 @@ def run_multi_iteration(df: pd.DataFrame, cfg: dict[str, Any]) -> dict[str, Any]
     return {"runs": runs, "summary": summary}
 
 
+def run_predictor_variants(df: pd.DataFrame, cfg: dict[str, Any]) -> pd.DataFrame:
+    """Repeat the masking experiment with selected predictors withheld.
+
+    The headline experiment uses every available predictor, which is the
+    realistic imputation setting but is flattered by ``cluster``: that column is
+    a 1-10 discretisation of ``index_value``, the feature being reconstructed
+    (r = 0.97). The predictor set also contains the four outcome variables, which
+    should not be used to justify imputing a predictor. Re-running the identical
+    protocol with those columns withheld shows how much of the advantage survives
+    without them, so the reported numbers can be read honestly.
+    """
+    ie = cfg["imputation_experiment"]
+    variants = ie.get("variants") or {"full": []}
+    target = ie["target_feature"]
+    base_seed = cfg["seed"]
+
+    rows = []
+    for name, dropped in variants.items():
+        preds = [p for p in ie["predictors"] if p not in set(dropped)]
+        data = df[df[target].notna()].copy()
+        X = data[preds].astype(float).reset_index(drop=True)
+        mice_r2, med_r2, mice_rmse, mice_mae = [], [], [], []
+        for i in range(ie["n_iterations"]):
+            res = _run_once(X, target, ie["mask_fraction"], ie["mice_max_iter"],
+                            base_seed + i)
+            mice_r2.append(res["mice"]["R2"])
+            med_r2.append(res["median"]["R2"])
+            mice_rmse.append(res["mice"]["RMSE"])
+            mice_mae.append(res["mice"]["MAE"])
+        mice_r2 = np.array(mice_r2)
+        med_r2 = np.array(med_r2)
+        rows.append({
+            "variant": name,
+            "dropped": ", ".join(dropped) if dropped else "(none)",
+            "n_predictors": len(preds),
+            "MICE_R2_mean": mice_r2.mean(), "MICE_R2_std": mice_r2.std(ddof=1),
+            "MICE_RMSE_mean": float(np.mean(mice_rmse)),
+            "MICE_MAE_mean": float(np.mean(mice_mae)),
+            "Median_R2_mean": med_r2.mean(),
+            "MICE_wins": int((mice_r2 > med_r2).sum()),
+            "n_runs": len(mice_r2),
+        })
+    return pd.DataFrame(rows)
+
+
 def plot_robustness(result: dict[str, Any], out_dir: Path) -> Path:
     """Boxplot of R^2 across all iterations, MICE vs median — the stability proof."""
     out_dir.mkdir(parents=True, exist_ok=True)
