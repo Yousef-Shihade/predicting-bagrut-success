@@ -90,6 +90,10 @@ feature_selection:
 # --- Modeling tournament -----------------------------------------------------
 modeling:
   cv_splits: 5
+  # Inner folds used by nested CV. Feature selection and hyperparameter search
+  # run inside these, on outer-training rows only, so no evaluation fold ever
+  # influences a modelling decision.
+  inner_cv_splits: 3
   champion: "hist_gradient_boosting"
   tuning_iter: 25
   shap_sample: 1500

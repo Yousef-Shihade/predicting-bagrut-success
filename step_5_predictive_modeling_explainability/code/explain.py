@@ -38,6 +38,32 @@ TARGET_LABELS = {
     "english_5unit_participation": "English — 5-unit participation",
 }
 
+# Human-readable axis labels. Two of these also correct literal translations of
+# the Ministry's Hebrew field names that would otherwise mislead a reader:
+#   * "שעות פרטניות" is the individual/small-group INSTRUCTION allocation given
+#     to schools, not commercial private tutoring.
+#   * "שירותי היקף" means ancillary/support services; "perimeter" was a literal
+#     rendering of היקף and is not a meaningful English term here.
+FEATURE_LABELS = {
+    "nurture_quintile": "Nurture index (school, 5 = most disadvantaged)",
+    "transport_per_student": "Transport budget line / student",
+    "log_school_size": "School size (log)",
+    "avg_class_size": "Average class size",
+    "log_population": "Locality population (log)",
+    "perimeter_per_student": "Support-services budget / student",
+    "projects_per_student": "Projects budget / student",
+    "purchases_per_student": "Purchases budget / student",
+    "tuition_per_student": "Tuition budget / student",
+    "cluster": "Municipal SES cluster",
+    "private_hours_per_student": "Individual-instruction hours / student",
+    "special_ed_share": "Special-education share",
+}
+
+
+def pretty(name: str) -> str:
+    """Display label for a feature, falling back to the raw column name."""
+    return FEATURE_LABELS.get(name, name.replace("_", " "))
+
 
 def shap_beeswarm(model, X: pd.DataFrame, target: str, cfg: dict[str, Any],
                   out_dir: Path) -> Path:
@@ -207,7 +233,7 @@ def plot_shap_core_ranking(importances: dict[str, pd.Series], out_dir: Path) -> 
         for i, v in enumerate(sub["share"].to_numpy()):
             ax.text(v + 0.8, i, f"{v:.1f}", va="center", fontsize=12, color="#333333")
         ax.set_yticks(ypos)
-        ax.set_yticklabels(order, fontsize=12.5)
+        ax.set_yticklabels([pretty(f) for f in order], fontsize=11)
         ax.invert_yaxis()
         ax.set_title(TARGET_LABELS.get(target, target), fontsize=15, color=NAVY, pad=6)
         ax.set_xlim(0, xmax)

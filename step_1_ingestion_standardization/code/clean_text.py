@@ -132,7 +132,12 @@ def _parse_nurture_quintile(value: Any) -> float:
         "חטיבה עליונה 1"                  -> 1
     Bagrut is an UPPER-school (חטיבה עליונה) outcome, so we take that stage's
     quintile; if it is absent we fall back to any digit present in the string.
-    Higher = more advantaged (matching the CBS convention).
+
+    DIRECTION: this is the Ministry's *nurture* (טיפוח) index, so a HIGHER
+    quintile means MORE educational disadvantage, i.e. a greater need for
+    nurturing resources. Verified against the data: mean combined grade falls
+    monotonically 85.3 -> 74.1 from quintile 1 to 5, and mean municipal cluster
+    falls 6.5 -> 2.8 over the same range. Quintile 1 = least disadvantaged.
     """
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return np.nan

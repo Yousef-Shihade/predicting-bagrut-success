@@ -49,13 +49,23 @@ def apply_display_labels(df: pd.DataFrame, cfg: dict[str, Any]) -> pd.DataFrame:
     return out
 
 
-def load_cleaned(cfg: dict[str, Any] | None = None) -> pd.DataFrame:
-    """Load Step 4 cleaned table; drop consensus outliers; translate Hebrew
-    categorical values to English for readable downstream artifacts."""
+def load_cleaned(cfg: dict[str, Any] | None = None,
+                 drop_outliers: bool = True) -> pd.DataFrame:
+    """Load the Step 4 cleaned table and translate Hebrew categorical values to
+    English for readable downstream artifacts.
+
+    ``drop_outliers`` controls whether the Step 4 consensus-anomaly rows are
+    removed. This is a switch rather than a default behaviour because the
+    anomaly detector's feature space INCLUDES outcome variables (combined grade
+    and both participation rates), so excluding those rows conditions the
+    evaluation sample on the target. The primary analysis therefore keeps every
+    valid school (``drop_outliers=False``) and the exclusion is reported only as
+    a sensitivity check.
+    """
     cfg = cfg or load_config()
     df = pd.read_csv(resolve(cfg["paths"]["cleaned_in"]), encoding=cfg["io"]["encoding"])
     flag = cfg["features"].get("exclude_outlier_flag")
-    if flag and flag in df.columns:
+    if drop_outliers and flag and flag in df.columns:
         df = df[~df[flag].astype(bool)].reset_index(drop=True)
     df = apply_display_labels(df, cfg)
     return df
