@@ -1,0 +1,65 @@
+\section{Feature Selection Methods}
+\label{sec:features}
+
+Feature selection runs in two stages: first remove predictors that are redundant
+with each other, then keep only those that carry real signal for the outcome.
+
+\textbf{Removing collinearity by iterative VIF pruning.} From 15 numeric
+candidates, instead of dropping every feature above the variance-inflation
+threshold (VIF $>5$) at once, we drop the single worst offender and recompute
+until every survivor clears it, because inflation is usually shared between a
+pair. Several features look collinear at first (the teaching-budget ratio at
+VIF $\approx 77$, individual-instruction hours at $\approx 58$, \texttt{cluster}
+at $\approx 20$), but most of that collapses once the true culprit goes. Only
+three drops are needed: two redundant budget ratios and the raw
+\texttt{index\_value}, which duplicates the \texttt{cluster} built from it.
+\texttt{cluster} itself survives once \texttt{index\_value} is gone, leaving
+twelve numeric features.
+
+\textbf{Keeping relevance by Boruta, per target.} On those 12 survivors plus
+seven one-hot categorical blocks (sector, supervision, district, legal status,
+education stage, locality type, year), totalling 49 encoded columns, Boruta runs
+separately for each target. Using a 200-tree random forest it compares every real feature
+against randomly shuffled shadow copies over up to 100 iterations, retaining one
+only when its importance repeatedly exceeds the 90th percentile of the shadow
+importances. A predictor survives only if its signal is dependably stronger than
+noise.
+
+The result is a \textbf{nine-feature core} confirmed for all four targets:
+locality population, the nurture index, average class size, school size, and five
+per-student budget ratios (tuition, perimeter, projects, purchases, transport).
+Each target adds its own on top (Table~\ref{tab:boruta}). Notably
+\texttt{cluster} is \emph{not} in that core: municipal status is confirmed for
+three targets but rejected outright for English average grade. Five core features
+are budget lines, and every target confirms at least one sector, supervision, or
+district attribute, a first sign that school-level structure carries signal the
+municipal cluster does not. No \texttt{year} dummy is confirmed anywhere, which
+says nothing about the shape of a temporal trend but does mean no single exam
+year carried enough independent signal to be retained.
+
+Feature selection is repeated independently inside every outer training fold for
+performance evaluation. Table~\ref{tab:boruta} reports the final descriptive
+Boruta selection obtained by refitting on all available modelling rows after
+evaluation. This final fit is used for interpretation and SHAP analysis, not for
+estimating predictive performance.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.3}
+\caption{Boruta selections per target: the shared nine-feature core plus each
+target's own confirmed additions. Extras are genuinely target-specific, not
+cumulative. Municipal \texttt{cluster} appears as an addition for three targets
+and is rejected for \texttt{english\_avg\_grade}.}
+\label{tab:boruta}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}p{8.6cm}r@{}}
+\toprule
+\textbf{Target} & \textbf{Additions beyond the nine-feature core} & \textbf{Total} \\
+\midrule
+Math grade      & \texttt{cluster}, \texttt{supervision\_Haredi} & 11 \\
+Math 5-unit     & \texttt{cluster}, \texttt{district\_North}, \texttt{sector\_Jewish} & 12 \\
+English 5-unit  & \texttt{cluster}, \texttt{private\_\allowbreak hours\_\allowbreak per\_student}, \texttt{sector\_Jewish}, \texttt{supervision\_Haredi} & 13 \\
+English grade   & \texttt{district\_North}, \texttt{private\_\allowbreak hours\_\allowbreak per\_student}, \texttt{special\_\allowbreak ed\_share}, \texttt{sector\_Bedouin} & 13 \\
+\bottomrule
+\end{tabular}
+\end{table}

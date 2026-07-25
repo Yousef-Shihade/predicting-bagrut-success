@@ -1,0 +1,53 @@
+\section{Data Cleaning and Preprocessing}
+
+Cleaning addressed four concerns: the missing target, predictor imputation,
+outliers, and encoding.
+
+\textbf{The missing target is not missing at random.} 21.4\% of Bagrut grade
+values are absent, but the absence is structured: suppressed cells have a median
+of 7 test takers against 28 where the grade is present. This is the Ministry
+protecting the privacy of small cohorts, not random loss. We therefore
+\emph{never impute the target}. School-level grades are aggregated over observed
+cells only, so no outcome value is invented.
+
+\textbf{Imputation is measured, not assumed.} Rather than assuming multivariate
+imputation by chained equations (MICE) recovers missing predictor values well, we
+test it directly: we hide 8\% of a fully observed feature (the CBS socioeconomic
+score), reconstruct it with MICE, and score the reconstruction against the
+withheld truth over 25 independent masks. MICE beats a median baseline on all 25 runs, but the
+margin depends on what else is available. With the municipal \texttt{cluster} in
+the predictor set MICE reaches $R^2 = 0.954 \pm 0.006$, a number that flatters
+the method because \texttt{cluster} is a discretisation of the same index
+($r = 0.97$). Withholding that near-duplicate and the outcome columns, MICE still
+reaches $R^2 = 0.331 \pm 0.056$ (RMSE $0.755$) while the median baseline never
+rises above zero, and it wins all 25 masks in every predictor set tested. MICE
+reconstructs each gap from the other observed columns, whereas the median returns
+one value everywhere and cannot track variation at all. Per-variant results are
+in the repository.
+
+\textbf{Modelling itself uses complete cases.} The masking study is a diagnostic.
+Imputed values are \emph{not} carried into the modelling table. Rows missing any
+numeric predictor are dropped, costing 9.0\% to 12.5\% of the target-present rows
+depending on the outcome, leaving 2,963 to 3,226 school-years per target. Missing
+categorical values enter as an all-zero indicator pattern.
+
+\textbf{Outliers are flagged, and kept in the primary analysis.} Two
+complementary detectors, Isolation Forest (global anomalies) and the Local
+Outlier Factor (local-density anomalies), were run on a nine-feature space. They
+agree on only 49 records (Jaccard $0.17$), confirming they capture genuinely
+different notions of ``anomalous''. That feature space includes outcome
+variables, so excluding the flagged rows would condition the evaluation sample on
+the target and could quietly remove legitimate high or low performers. The
+primary results therefore retain every valid school. Repeating the evaluation
+with the 49 records dropped changes mean $R^2$ by $+0.001$, with per-target
+shifts between $-0.023$ and $+0.013$, well inside the fold-to-fold standard
+deviation. The choice is immaterial to the findings.
+
+\textbf{Encoding and scaling.} Categorical attributes (sector, supervision,
+district, legal status, education stage, locality type) are one-hot encoded, with
+Hebrew values mapped to English first for readable outputs. The exam
+\texttt{year} is encoded as four independent periods rather than a numeric trend,
+since with only four years there is no basis to assume an equal step between
+them. Linear models are standardised inside the cross-validation folds, never on
+the full dataset, so no test-fold information leaks into the scaling. Trees need
+no scaling.

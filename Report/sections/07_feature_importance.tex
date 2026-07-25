@@ -1,0 +1,114 @@
+\section{Feature Analysis and Importance}
+\label{sec:importance}
+
+Two analyses answer the main research question. SHAP attributes each
+prediction to individual features, and a controlled ablation measures what the
+school-level data adds over municipal socioeconomics alone.
+
+\textbf{What the models actually rely on.} Figure~\ref{fig:shap} ranks the nine
+features confirmed for all four targets, plus municipal \texttt{cluster} for
+comparison, by mean absolute SHAP value as a share of each target's total so the
+outcomes sit on one scale. These values come from a RandomForest refitted on all
+rows using the same Boruta-selected features per target, matching the family
+Table~\ref{tab:leaderboard} selects, so they explain that model rather than
+held-out predictions, and they report magnitude, not direction.
+
+The \texttt{nurture\_quintile} leads every target, taking 19.7\% to 36.2\% of
+total attribution. This is the Ministry's nurture (\emph{tipuach}) index recorded
+\emph{per school} on a 1--5 scale where \textbf{higher means more disadvantaged}:
+mean combined grade falls monotonically from 85.3 at quintile 1 to 74.1 at
+quintile 5. It is missing for 11.9\% of school-years, which leave the
+complete-case sample. Municipal \texttt{cluster} never exceeds 5.3\% and is
+dropped entirely for English average grade. Both measure socioeconomic standing,
+so this is not a finding that socioeconomics do not matter but one about
+\emph{granularity}: schools inside one municipality differ enough that the
+town-level average conceals most of the effect.
+
+Beyond that index the leading features are institutional. The transport budget
+line ranks second for every target, but needs care: it is negative for 86\% of
+institutions in the raw Ministry file and 83\% in the complete-case modelling
+sample, indicating a net accounting adjustment rather than gross spending, so
+its meaning needs confirmation against the Ministry's data dictionary. Class
+size and school size follow, and school size is especially strong for advanced
+Math participation (16.5\%), consistent with a large cohort being what makes
+opening a 5-unit class viable.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\linewidth]{section7/shap_core_ranking.png}
+\caption{Mean $|$SHAP$|$ importance as a share of each target's total, from a
+RandomForest refit matching the selected champion. The school-level nurture
+index leads all four outcomes (19.7\% to 36.2\%), while municipal cluster never
+exceeds 5.3\% and is not selected at all for English average grade.}
+\label{fig:shap}
+\end{figure}
+
+\textbf{How much the school-level data adds.} SHAP ranks features inside a model
+but cannot say what the extra data was worth. So each target is modelled twice on
+\emph{identical rows} under the same nested protocol: once on municipal features
+alone (cluster, population, locality type, year) and once on the full candidate
+set. Only the available information differs, so the gap measures incremental
+predictive value (Table~\ref{tab:ablation}).
+\phantomsection\label{sec:secondary}
+
+\begin{table}[H]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.3}
+\caption{Ablation study under the same nested protocol: outer-fold $R^2$
+(mean $\pm$ sd) from municipal features alone, and the gain from adding the
+school-level set on identical rows. The full-set scores are the Random Forest
+column of Table~\ref{tab:leaderboard} and so are not repeated here.}
+\label{tab:ablation}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.2cm}rccc@{}}
+\toprule
+\textbf{Target} & \textbf{Rows} & \textbf{Municipal only} & \textbf{$\Delta R^2$ from school data} & \textbf{Folds improved} \\
+\midrule
+Math grade              & 2,995 & $0.109\!\pm\!0.019$ & $\mathbf{+0.311\!\pm\!0.040}$ & 5/5 \\
+English grade           & 2,963 & $0.196\!\pm\!0.028$ & $\mathbf{+0.256\!\pm\!0.034}$ & 5/5 \\
+Math 5-unit             & 3,221 & $0.055\!\pm\!0.033$ & $\mathbf{+0.340\!\pm\!0.039}$ & 5/5 \\
+English 5-unit          & 3,226 & $0.229\!\pm\!0.050$ & $\mathbf{+0.328\!\pm\!0.043}$ & 5/5 \\
+\midrule
+\textbf{Mean} & & \textbf{0.147} & $\mathbf{+0.309}$ & \textbf{20/20} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Municipal features alone predict little, with advanced Math participation close
+to unpredictable from the town. Adding the school-level set raises every target
+to between 0.395 and 0.557, a mean gain of $+0.309$ holding in \textbf{every
+outer fold}, so it is not an artefact of a favourable split. The result is
+associational: incremental predictive value, not a causal effect of school
+resources.
+
+\textbf{Subject resilience and low-status overachievers.} The secondary questions
+use the municipal gradient alone, holding institutional features out so they read
+as a clean measure of socioeconomic disparity (Table~\ref{tab:secondary}).
+Comparing cluster~2 against cluster~9, Mathematics is the more resilient subject:
+a slightly smaller achievement gap and a participation gap roughly a third of
+English's. Overachievers are clusters~1--4 schools whose average grade reaches
+the \emph{median} of clusters~8--10 (84.90). Of 460 such schools, \textbf{87
+(18.9\%)} clear that bar, and on Welch two-sample tests their advanced-track
+participation is roughly 2.7$\times$ their peers' in Math and 2.6$\times$ in
+English.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.25}
+\caption{Secondary questions. Resilience contrasts cluster~2 with cluster~9.
+Overachievers are clusters~1--4 schools at or above the clusters~8--10 median
+grade (84.90). The comparison group is the remaining low-cluster schools.}
+\label{tab:secondary}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{5.0cm}rrr@{}}
+\toprule
+\textbf{(A) Resilience, cluster 2 $\rightarrow$ 9} & \textbf{Math} & \textbf{English} & \\
+Grade gap (points), Cohen's $d$ & 6.18 (0.91) & 6.45 (1.16) & \\
+5-unit participation gap & \textbf{0.115} & 0.367 & \\
+\midrule
+\textbf{(B) Overachievers, 87 of 460} & \textbf{Over} & \textbf{Peers} & \textbf{$p$} \\
+Math 5-unit participation & 0.132 & 0.049 & $1.4\!\times\!10^{-5}$ \\
+English 5-unit participation & 0.468 & 0.181 & $1.4\!\times\!10^{-11}$ \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,0 +1,92 @@
+% =====================================================================
+%  Predicting Bagrut Success — Final Report (Data Science Laboratory)
+%  Authors: Yousef Shihade & Shada Esawi
+%  University of Haifa
+%
+%  Build:  pdflatex main.tex   (run twice for cross-references)
+%  This file holds the preamble + \input calls only; prose lives in sections/.
+% =====================================================================
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}          % subtle spacing improvements for tight page budgets
+\usepackage{graphicx}
+\usepackage{array}              % >{...} column modifiers (ragged-right fixed-width cells)
+\usepackage{booktabs}           % clean tables (\toprule/\midrule/\bottomrule)
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+
+\graphicspath{{figures/}}
+
+% --- compact, readable defaults for an 8-page report -----------------
+\captionsetup{font=small,labelfont=bf,skip=4pt}
+\setlength{\parskip}{0.30em}
+\setlength{\parindent}{0pt}
+\definecolor{linknavy}{HTML}{1b2a4a}
+\hypersetup{
+  colorlinks=true,
+  allcolors=linknavy,
+  pdftitle={Predicting Bagrut Success: Municipal Socioeconomics and School-Level Institutional Resources},
+  pdfauthor={Yousef Shihade, Shada Esawi},
+  pdfsubject={School-level prediction of Bagrut achievement and advanced-track participation},
+  pdfkeywords={Bagrut, education, socioeconomic status, machine learning, SHAP, nested cross-validation}
+}
+
+% Repository URL, used in the Introduction's Code Availability line.
+\newcommand{\repourl}{https://github.com/Yousef-Shihade/predicting-bagrut-success}
+
+% =====================================================================
+\begin{document}
+
+% --- compact title block (not a full title page — conserves the page budget)
+\begin{center}
+    {\LARGE\bfseries Predicting Bagrut Success}\\[16pt]
+    {\large Yousef Shihade \quad Shada Esawi}\\[14pt]
+    University of Haifa \,\textbullet\, Data Science Lab -- Final Project 2026\\[10pt]
+    \rule{\textwidth}{0.4pt}
+\end{center}
+
+\input{sections/01_introduction}
+\input{sections/02_data}
+\input{sections/03_cleaning}
+\input{sections/04_models}
+\input{sections/05_feature_selection}
+\input{sections/06_evaluation}
+\input{sections/07_feature_importance}
+\input{sections/08_conclusions}
+
+\begingroup
+\footnotesize
+\setlength{\parskip}{0pt}
+\begin{thebibliography}{9}
+\setlength{\itemsep}{0pt}
+\setlength{\parsep}{0pt}
+\bibitem{bagrut} Israel Ministry of Education. \emph{Bagrut examination results
+  by school, 2013--2016}. Freedom of Information Law, mirrored on Kaggle.
+\bibitem{cbs} Israel Central Bureau of Statistics. \emph{Characterization and
+  Classification of Local Authorities by Socio-Economic Level}, 2015 index.
+\bibitem{moe} Israel Ministry of Education. \emph{Institutional budget and
+  school characteristics file}, 2014/15.
+\bibitem{mice} van Buuren, S. and Groothuis-Oudshoorn, K. (2011). mice:
+  Multivariate Imputation by Chained Equations in R. \emph{J.\ Stat.\ Soft.}, 45(3).
+\bibitem{boruta} Kursa, M. B. and Rudnicki, W. R. (2010). Feature Selection with
+  the Boruta Package. \emph{J.\ Stat.\ Soft.}, 36(11).
+\bibitem{shap} Lundberg, S. M. and Lee, S.-I. (2017). A Unified Approach to
+  Interpreting Model Predictions. \emph{NeurIPS 30}.
+\bibitem{iforest} Liu, F. T., Ting, K. M. and Zhou, Z.-H. (2008). Isolation
+  Forest. \emph{IEEE ICDM}, 413--422.
+\bibitem{lof} Breunig, M. M. et al. (2000). LOF: Identifying Density-Based Local
+  Outliers. \emph{ACM SIGMOD}, 93--104.
+\bibitem{sklearn} Pedregosa, F. et al. (2011). Scikit-learn: Machine Learning in
+  Python. \emph{JMLR}, 12, 2825--2830.
+\end{thebibliography}
+\endgroup
+
+\end{document}

@@ -1,0 +1,33 @@
+\section{Introduction}
+
+Every year Israeli high-school students sit the \emph{Bagrut}, the national
+matriculation examinations that gate university admission. A long-standing
+question in educational policy is how much a student's outcome is fixed by the
+socioeconomic status of the \emph{municipality} their school sits in, versus what
+the \emph{school itself} does with its resources. This project answers that
+question with a reproducible, cross-validated machine-learning pipeline.
+
+\textbf{Main question.} Can municipal socioeconomic status and school-level
+institutional resources, \emph{combined}, meaningfully predict Israeli
+high-school Bagrut achievement and advanced-track participation? \textbf{Secondary
+questions.} (A)~Which subject (Mathematics or English) is more \emph{resilient}
+to socioeconomic and institutional disparity, and do schools exist that
+outperform their peers despite limited resources? (B)~Which specific school-level
+factors (budget allocation, class size, sector, or supervision type) most
+strongly predict outcomes, \emph{independent} of municipal wealth?
+
+We model four school-level targets: the average Bagrut grade and the advanced
+(5-unit) participation rate, each for Mathematics and English. A municipal score
+cannot capture what happens inside a specific school, and separating the two is
+what makes the policy question answerable.
+
+\textbf{Revisions since the interim stage.} The study began as a municipal-only
+design. Following review we added the Ministry's school-level dataset and rebuilt
+the pipeline from ingestion onward. Later revisions introduced cross-validation
+grouped by school, per-target feature selection, explicit handling of
+privacy-suppressed grades, a municipal-versus-school ablation, and a nested
+protocol in which feature selection and tuning run inside training folds only.
+
+\textbf{Code availability.} All data-processing and modelling code, with
+per-stage documentation, is openly available at \href{\repourl}{\repourl}. Every
+figure and number below traces to a file in that repository.
