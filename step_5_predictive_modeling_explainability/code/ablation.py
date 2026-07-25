@@ -9,12 +9,15 @@ Authors: Yousef Shihade & Shada Esawi
 status?" is the project's central question, and it deserves a directly controlled
 answer rather than an inference drawn from two separately-reported model runs.
 
-This module answers it as an ABLATION study: for each target we tune the champion
+This module is the LEGACY single-pass ablation: for each target it tunes
 HistGradientBoosting TWICE on IDENTICAL rows — once on municipal features only
 (SES only: cluster, log_population, year, locality_form) and once on whatever
 Boruta selected from the full SES+budget candidate space. Holding the rows, the
 CV folds and the tuning protocol fixed means the R^2 delta is attributable ONLY
 to the extra information, not to a different row set or a different protocol.
+Superseded by run_nested_ablation.py, which reruns this same idea leakage-free
+with RandomForest (the family nested_cv.py selects) -- that is the reported
+ablation (Table 5 / ablation_nested.csv), not this module's output.
 """
 from __future__ import annotations
 

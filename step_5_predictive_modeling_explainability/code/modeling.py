@@ -7,12 +7,17 @@ Authors: Yousef Shihade & Shada Esawi
 
 For each target we evaluate four models under GroupKFold(semel) CV:
   * Ridge            — regularised linear baseline (standardised)
-  * SGDRegressor     — linear SVM via stochastic gradient descent
-                       (standardised)
+  * SGDRegressor     — linear regression fit by stochastic gradient descent
+                       (default squared-error loss, NOT an SVM; standardised)
   * RandomForest     — bagged tree ensemble (non-linear)
-  * HistGradientBoosting — modern boosted trees; the tuned CHAMPION. Handles
-                       non-linear curves and the zero-inflated Math participation
-                       natively.
+  * HistGradientBoosting — modern boosted trees
+
+This module is the OLDER single-pass path (tournament on the full sample, then
+``tune_champion`` tunes HistGradientBoosting only). It is kept for the
+descriptive VIF/Boruta/SHAP artefacts, NOT for the headline predictive-
+performance numbers — those come from nested_cv.py, where RandomForest is
+selected on every target under a fair, equal-effort search across all four
+families. See the Step 5 README for which files are the headline source.
 
 GroupKFold keeps every year of a school in the same fold, so the leaderboard is
 free of school-level leakage. Standardisation for the linear models happens
@@ -41,7 +46,7 @@ def build_models(seed: int) -> dict[str, Any]:
     """name -> estimator (pipelines already include scaling where needed)."""
     return {
         "Ridge": make_pipeline(StandardScaler(), Ridge(alpha=1.0, random_state=seed)),
-        "SGD (linear SVM)": make_pipeline(
+        "SGDRegressor (linear)": make_pipeline(
             StandardScaler(),
             SGDRegressor(random_state=seed, max_iter=3000, tol=1e-4,
                          early_stopping=True)),
@@ -72,7 +77,13 @@ def run_tournament(X, y, groups, cfg) -> pd.DataFrame:
 
 
 def tune_champion(X, y, groups, cfg) -> dict[str, Any]:
-    """RandomizedSearchCV on HistGradientBoosting under GroupKFold."""
+    """RandomizedSearchCV on HistGradientBoosting under GroupKFold.
+
+    NOTE: this tunes HGB specifically for the legacy single-pass leaderboard
+    (``leaderboard_tuned.csv``), which is NOT the headline result. It is not
+    the model used for the report's SHAP figures — see ``tune_final_random_
+    forest`` below, which refits the family nested_cv.py actually selected.
+    """
     seed = cfg["seed"]
     cv = GroupKFold(n_splits=cfg["modeling"]["cv_splits"])
     param_dist = {
@@ -87,6 +98,34 @@ def tune_champion(X, y, groups, cfg) -> dict[str, Any]:
         HistGradientBoostingRegressor(random_state=seed),
         param_distributions=param_dist, n_iter=cfg["modeling"]["tuning_iter"],
         scoring="r2", cv=cv, random_state=seed, n_jobs=-1, refit=True)
+    search.fit(X, y, groups=groups)
+
+    best = search.best_estimator_
+    tuned = _cv_metrics(best, X, y, groups, cfg["modeling"]["cv_splits"])
+    return {"best_estimator": best, "best_params": search.best_params_,
+            "cv_best_r2": float(search.best_score_), "tuned_metrics": tuned}
+
+
+def tune_final_random_forest(X, y, groups, cfg) -> dict[str, Any]:
+    """RandomizedSearchCV on RandomForest under GroupKFold, on the descriptive
+    (full-sample, full-data-Boruta-selected) feature matrix.
+
+    RandomForest is the family nested_cv.py selects for every target. This
+    refit gives SHAP a model that actually matches the reported champion,
+    using the identical search space as the headline nested evaluation
+    (``nested_cv.candidate_spaces``), so the descriptive fit and the reported
+    predictive performance describe the same family.
+    """
+    import nested_cv as ncv
+    from sklearn.base import clone
+
+    seed = cfg["seed"]
+    cv = GroupKFold(n_splits=cfg["modeling"]["cv_splits"])
+    space = ncv.candidate_spaces(seed)["RandomForest"]
+    search = RandomizedSearchCV(
+        clone(space["estimator"]), param_distributions=space["param_dist"],
+        n_iter=cfg["modeling"]["tuning_iter"], scoring="r2", cv=cv,
+        random_state=seed, n_jobs=-1, refit=True)
     search.fit(X, y, groups=groups)
 
     best = search.best_estimator_

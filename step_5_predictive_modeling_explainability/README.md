@@ -14,9 +14,14 @@
 > **⚠️ Which numbers to quote.** `run_nested_cv.py` produces the **headline,
 > leakage-free** results (`leaderboard_nested.csv`): feature selection and
 > tuning run *inside outer training folds only*. `run_step5.py` is the older
-> single-pass path kept for the SHAP/VIF/Boruta artefacts; its
-> `leaderboard_tuned.csv` selects features and tunes on the full sample, so
-> those figures are **optimistic and are not reported**.
+> single-pass path kept for the descriptive VIF/Boruta artefacts (Table 4);
+> its own tournament and tuned-HGB leaderboard (`leaderboard_tuned.csv`)
+> select features and tune on the full sample, so **those performance numbers
+> are optimistic and are not reported**. Its SHAP output, however, IS
+> reported: `run_step5.py` refits a **RandomForest** — the family
+> `run_nested_cv.py` selects on every target — on the descriptive sample
+> before computing SHAP, so the explainability figures match the champion
+> the headline evaluation actually chose.
 
 ---
 
@@ -33,19 +38,25 @@ step_5_predictive_modeling_explainability/
 │   ├── run_nested_cv.py      # runs nested CV for all 4 targets x 4 families -> leaderboard_nested.csv
 │   ├── run_nested_ablation.py    # municipal-only vs full set, nested, identical rows
 │   ├── run_outlier_sensitivity.py # anomalies retained vs excluded
-│   ├── modeling.py           # older single-pass comparison (kept for reference)
+│   ├── modeling.py           # legacy single-pass tournament + HGB tuning; also
+│   │                         #   tune_final_random_forest() for the SHAP refit
 │   ├── ablation.py           # older single-pass ablation (kept for reference)
-│   ├── explain.py            # SHAP, leaderboard, ablation, VIF & residual plots
-│   └── run_step5.py          # SHAP/VIF/Boruta artefacts (NOT the headline metrics)
+│   ├── explain.py            # SHAP, nested/legacy leaderboard & ablation, VIF & residual plots
+│   └── run_step5.py          # descriptive VIF/Boruta + SHAP (NOT the headline
+│                             #   predictive-performance metrics)
 ├── models/                   # leaderboard_nested.csv + nested_per_fold.csv  <- REPORTED
 │                             # ablation_nested.csv, outlier_sensitivity.csv
-│                             # (leaderboard_cv / leaderboard_tuned = older, optimistic)
-└── graphs/                   # VIF pruning, SHAP beeswarms + core ranking,
-                              #   residuals_nested, ablation
+│                             # *_rf.joblib = descriptive/SHAP RandomForest
+│                             # (leaderboard_cv / leaderboard_tuned / *_hgb.joblib = legacy, optimistic)
+└── graphs/                   # nested_leaderboard, nested_ablation, residuals_nested <- REPORTED
+                              #   VIF pruning, SHAP beeswarms + core ranking (RandomForest)
+                              #   models_performance / ablation_before_after = legacy, unused
 ```
 
 Run the headline evaluation: `python code/run_nested_cv.py`
-Then: `run_nested_ablation.py`, `run_outlier_sensitivity.py`, `run_step5.py`.
+Then: `run_nested_ablation.py`, `run_outlier_sensitivity.py`, `run_step5.py`
+(descriptive VIF/Boruta/SHAP artifacts only; not the source of the reported
+predictive-performance estimates).
 
 ---
 
@@ -240,17 +251,19 @@ Per-target shifts run −0.023 to +0.013, all well inside fold-to-fold variation
 Mean |SHAP| for the **9-feature shared core plus municipal `cluster`**, expressed
 as a share of each target's total so the four outcomes are comparable on one
 scale. The school-level **`nurture_quintile`** is the **top feature for all four
-targets** (21.8%–41.6%), while municipal **`cluster`** never exceeds **4.6%** and
+targets** (19.7%–36.2%), while municipal **`cluster`** never exceeds **5.3%** and
 is labelled *"not selected"* for `english_avg_grade`, where Boruta rejected it
 outright. Both measure socioeconomic standing, so the contrast is about
 **granularity**: the school-level measure carries signal the municipal average
-washes out. The transport budget line ranks 2nd or 3rd for every target, and
-`log_school_size` is especially strong for advanced Math participation (19.0%).
+washes out. The transport budget line ranks 2nd for every target, and
+`log_school_size` is especially strong for advanced Math participation (16.5%).
 
-> **Two caveats on reading this chart.** SHAP values here describe the **final
-> model fitted on all rows**, so they explain that model rather than held-out
-> predictions. They also report **magnitude, not direction** — see the beeswarm
-> below for directionality.
+> **Two caveats on reading this chart.** These SHAP values come from a
+> **RandomForest refitted on all rows** using each target's Boruta-selected
+> features — the family §4's nested evaluation actually selects, so this
+> explains the reported champion rather than held-out predictions. They also
+> report **magnitude, not direction** — see the beeswarm below for
+> directionality.
 >
 > `nurture_quintile` runs **1–5 where HIGHER = MORE disadvantaged** (mean
 > combined grade falls 85.3 → 74.1 from quintile 1 to 5). It is missing for
@@ -261,9 +274,9 @@ washes out. The transport budget line ranks 2nd or 3rd for every target, and
 ![SHAP example](graphs/shap_beeswarm_math_5unit_participation.png)
 
 For `math_5unit_participation` — the target municipal SES explains least
-— the top SHAP features are `nurture_quintile`, `log_school_size`, and
-`transport_per_student`, with `district_North` and `avg_class_size` also
-ranking above `cluster`. **Institutional/school-level attributes outrank
+— the top SHAP features are `nurture_quintile`, `transport_per_student`, and
+`log_school_size`, with `avg_class_size` and `district_North` also ranking
+above `cluster`. **Institutional/school-level attributes outrank
 municipal wealth** for explaining who enters advanced Math — direct, visual
 confirmation of the ablation result.
 
@@ -302,10 +315,12 @@ protocol, not evidence of a causal effect of school resources.
 - [x] Primary analysis **retains all valid schools**; outlier exclusion reported
       as a sensitivity check (effect: +0.001 mean R², immaterial).
 - [x] Residual diagnostics built from **nested out-of-fold predictions**, 300 dpi.
-- [x] SHAP beeswarms for all 4 targets; Hebrew categorical values translated to
-      English, and two literal field-name translations corrected.
+- [x] SHAP beeswarms for all 4 targets, computed on a RandomForest refit
+      matching the nested-CV champion (not the legacy tuned HGB); Hebrew
+      categorical values translated to English, and two literal field-name
+      translations corrected.
 - [x] Cross-target SHAP ranking (`shap_core_ranking.png`): `nurture_quintile`
-      leads all 4 targets; municipal `cluster` never exceeds 4.6% and is not
+      leads all 4 targets; municipal `cluster` never exceeds 5.3% and is not
       selected at all for `english_avg_grade`.
 
 **Status: Step 5 complete ✔**

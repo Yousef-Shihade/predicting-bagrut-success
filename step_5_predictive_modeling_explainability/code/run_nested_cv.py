@@ -14,6 +14,10 @@ Outputs (models/):
     nested_per_fold.csv         every outer fold's score (full audit trail)
     nested_oof_predictions.csv  pooled out-of-fold predictions of the best family
 
+Outputs (graphs/):
+    nested_leaderboard.png      grouped bar of the leaderboard above (report Table 3)
+    residuals_nested.png        out-of-fold residual distributions (report Figure 1)
+
 Usage:
     python code/run_nested_cv.py
 """
@@ -34,6 +38,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
+import explain  # noqa: E402
 import feature_selection as fs  # noqa: E402
 import nested_cv  # noqa: E402
 from io_load import build_xy, load_cleaned, load_config, resolve  # noqa: E402
@@ -96,6 +101,11 @@ def main() -> None:
     summary.to_csv(models_dir / "leaderboard_nested.csv", index=False, encoding=enc)
     per_fold.to_csv(models_dir / "nested_per_fold.csv", index=False, encoding=enc)
     oof.to_csv(models_dir / "nested_oof_predictions.csv", index=False, encoding=enc)
+
+    graphs_dir = resolve(cfg["paths"]["out_graphs"])
+    explain.plot_nested_leaderboard(summary, graphs_dir)
+    explain.plot_nested_residuals(oof, graphs_dir, targets=cfg["targets"])
+    print(f"\n[SAVED] nested_leaderboard.png, residuals_nested.png -> {graphs_dir}")
 
     print("\n" + "=" * 78)
     print("HONEST LEADERBOARD (best family per target, outer-fold mean +/- sd)")

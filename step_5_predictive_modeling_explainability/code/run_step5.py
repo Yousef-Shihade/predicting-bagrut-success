@@ -8,9 +8,17 @@ Authors: Yousef Shihade & Shada Esawi
 Pipeline, following the redesign that merges all three datasets from the start:
     load -> iterative VIF collinearity pruning (full 15-feature numeric set)
     -> per target: Boruta feature selection (SES+budget candidates)
-                -> model tournament (GroupKFold CV) -> tune champion (HGB)
-                -> SHAP -> ablation (SES-only vs Boruta-selected, same rows)
+                -> model tournament (GroupKFold CV) -> tune legacy HGB champion
+                -> tune a final RandomForest (matches nested_cv.py's selection)
+                -> SHAP on that RandomForest
+                -> ablation (SES-only vs Boruta-selected, same rows)
     -> serialize models -> leaderboards -> comprehensive console report
+
+NOT the headline predictive-performance source: this script's tournament and
+HGB tuning are the older single-pass path (see the Step 5 README's "which
+numbers to quote" note). It IS the source of the descriptive VIF/Boruta
+artefacts and, since the RandomForest step above, of the SHAP figures that
+correctly explain the model nested_cv.py actually selected.
 
 Usage:
     python code/run_step5.py
@@ -133,26 +141,43 @@ def main() -> None:
         for _, r in lb.iterrows():
             print(f"      {r['model']:22s} R2={r['R2']:+.3f}  RMSE={r['RMSE']:.3f}  MAE={r['MAE']:.3f}")
 
-        # ----- Tune champion (HGB) ----- #
+        # ----- Tune legacy HGB champion (single-pass leaderboard only) ----- #
         tuned = modeling.tune_champion(Xsel, y, groups, cfg)
         tuned_store[target] = {**tuned, "features": list(Xsel.columns)}
         tm = tuned["tuned_metrics"]
-        print(f"    TUNED HistGradientBoosting -> R2={tm['R2']:+.3f} RMSE={tm['RMSE']:.3f} MAE={tm['MAE']:.3f}")
+        print(f"    TUNED HistGradientBoosting (legacy) -> R2={tm['R2']:+.3f} "
+              f"RMSE={tm['RMSE']:.3f} MAE={tm['MAE']:.3f}")
 
         model_path = models_dir / f"{target}_hgb.joblib"
         joblib.dump({"model": tuned["best_estimator"], "features": list(Xsel.columns),
                     "target": target, "cv_metrics": tm}, model_path)
 
-        # Keep the champion + its data for the out-of-fold residual diagnostic.
+        # Keep the legacy HGB fit + its data for the (unused, legacy) residual
+        # histogram diagnostic. The report's residual figure comes from
+        # nested_cv.py's out-of-fold predictions instead (residuals_nested.png).
         resid_inputs[target] = {"estimator": tuned["best_estimator"], "X": Xsel,
                                 "y": y, "groups": groups, "r2": tm["R2"]}
 
-        # ----- SHAP ----- #
-        plots.append(explain.shap_beeswarm(tuned["best_estimator"], Xsel, target, cfg, graphs))
-        shap_importances[target] = explain.shap_importance(tuned["best_estimator"], Xsel,
+        # ----- Final descriptive RandomForest (matches the nested-CV champion) -----
+        # SHAP must explain the family nested_cv.py actually selected, not the
+        # legacy HGB above, so it is refit here on the same descriptive sample
+        # and Boruta-selected features, using the identical search space as the
+        # headline evaluation (nested_cv.candidate_spaces).
+        rf_tuned = modeling.tune_final_random_forest(Xsel, y, groups, cfg)
+        rf_tm = rf_tuned["tuned_metrics"]
+        print(f"    TUNED RandomForest (descriptive/SHAP model) -> "
+              f"R2={rf_tm['R2']:+.3f} RMSE={rf_tm['RMSE']:.3f} MAE={rf_tm['MAE']:.3f}")
+
+        rf_model_path = models_dir / f"{target}_rf.joblib"
+        joblib.dump({"model": rf_tuned["best_estimator"], "features": list(Xsel.columns),
+                    "target": target, "cv_metrics": rf_tm}, rf_model_path)
+
+        # ----- SHAP (on the final RandomForest, not the legacy HGB) ----- #
+        plots.append(explain.shap_beeswarm(rf_tuned["best_estimator"], Xsel, target, cfg, graphs))
+        shap_importances[target] = explain.shap_importance(rf_tuned["best_estimator"], Xsel,
                                                            target, cfg)
         top3 = ", ".join(f"{f} ({v:.3f})" for f, v in shap_importances[target].head(3).items())
-        print(f"    SHAP top-3 (mean |SHAP|): {top3}")
+        print(f"    SHAP top-3 (mean |SHAP|, RandomForest): {top3}")
 
         # ----- Ablation: SES-only vs Boruta-selected full set, SAME rows ----- #
         sel_num, sel_cat = _map_selected_to_original(bor["selected"], numeric_candidates,
@@ -175,11 +200,12 @@ def main() -> None:
     pd.DataFrame(boruta_rows).to_csv(resolve(cfg["paths"]["boruta_out"]), index=False,
                                      encoding=cfg["io"]["encoding"])
 
-    # The headline numbers quoted in the READMEs are the *tuned* champion's, not
-    # the untuned tournament's — persist them so they are auditable from a CSV
+    # This tuned-HGB leaderboard is legacy, NOT the headline numbers quoted in
+    # the report/READMEs (those come from nested_cv.py's leaderboard_nested.csv).
+    # Persisted anyway so the legacy single-pass path stays auditable from a CSV
     # rather than only from inside the .joblib files.
     tuned_rows = [{"target": t,
-                   "model": "HistGradientBoosting (tuned)",
+                   "model": "HistGradientBoosting (tuned, legacy)",
                    "n_features": len(s["features"]),
                    **{k: s["tuned_metrics"][k] for k in ("R2", "RMSE", "MAE")}}
                   for t, s in tuned_store.items()]
@@ -190,9 +216,12 @@ def main() -> None:
     ablation_df = pd.DataFrame(ablation_rows)
     ablation_df.to_csv(resolve(cfg["paths"]["ablation_out"]), index=False,
                        encoding=cfg["io"]["encoding"])
+    # Legacy single-pass ablation figure -- superseded by nested_ablation.png
+    # (run_nested_ablation.py), which is what the report and root README use.
     plots.append(explain.plot_before_after(ablation_df, graphs))
 
-    # Out-of-fold residual diagnostic for the tuned champions (report §6).
+    # Legacy out-of-fold residual diagnostic (single-pass HGB). NOT used by the
+    # report -- Figure 1 / §6 comes from nested_cv.py's residuals_nested.png.
     plots.append(explain.plot_residual_histograms(resid_inputs, cfg, graphs))
 
     # Cross-target SHAP ranking of the shared core features (report §7).
@@ -200,8 +229,9 @@ def main() -> None:
 
     # ---------------- final report --------------------------------------------- #
     print("\n" + _hr())
-    print("FINAL CROSS-VALIDATED LEADERBOARD (champion = tuned HistGradientBoosting,")
-    print("full Boruta-selected SES+Budget feature set)")
+    print("LEGACY SINGLE-PASS LEADERBOARD (tuned HistGradientBoosting,")
+    print("full Boruta-selected SES+Budget feature set) -- NOT the headline numbers,")
+    print("see leaderboard_nested.csv from run_nested_cv.py for those")
     print(_hr())
     print(f"{'target':32s}{'best model':24s}{'R2':>8}{'RMSE':>9}{'MAE':>9}")
     for t in targets:
@@ -220,8 +250,11 @@ def main() -> None:
     print(f"    VIF report        : {Path(cfg['paths']['vif_out']).name}")
     print(f"    Boruta report     : {Path(cfg['paths']['boruta_out']).name}")
     print(f"    Ablation report   : {Path(cfg['paths']['ablation_out']).name}")
-    print(f"    leaderboard csv   : {Path(cfg['paths']['leaderboard_out']).name} (untuned tournament)")
-    print(f"    tuned champion csv: {Path(cfg['paths']['tuned_out']).name} (headline numbers)")
+    print(f"    leaderboard csv   : {Path(cfg['paths']['leaderboard_out']).name} (untuned tournament, legacy)")
+    print(f"    tuned HGB csv     : {Path(cfg['paths']['tuned_out']).name} (legacy, NOT headline -- "
+          f"see leaderboard_nested.csv)")
+    print(f"    RandomForest joblibs: {len(targets)} -> {models_dir.name}/*_rf.joblib "
+          f"(descriptive/SHAP model)")
     print("    graphs:")
     for p in [vif_plot] + plots:
         print(f"      - {Path(p).name:38s} ({Path(p).stat().st_size/1024:6.1f} KB)")

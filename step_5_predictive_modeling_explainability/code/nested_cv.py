@@ -61,7 +61,7 @@ def candidate_spaces(seed: int) -> dict[str, dict[str, Any]]:
             "estimator": make_pipeline(StandardScaler(), Ridge(random_state=seed)),
             "param_dist": {"ridge__alpha": [0.01, 0.1, 1.0, 10.0, 50.0, 100.0, 500.0]},
         },
-        "SGD (linear SVM)": {
+        "SGDRegressor (linear)": {
             "estimator": make_pipeline(
                 StandardScaler(),
                 SGDRegressor(random_state=seed, max_iter=3000, tol=1e-4,

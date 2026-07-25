@@ -1,5 +1,5 @@
 ﻿target,model,n_features,R2,RMSE,MAE
-english_5unit_participation,HistGradientBoosting (tuned),13,0.5598446561686548,0.1778393143460113,0.12843754733123905
-english_avg_grade,HistGradientBoosting (tuned),13,0.4543338344515978,4.5187248311060735,3.449280343400557
-math_avg_grade,HistGradientBoosting (tuned),11,0.41238240016341016,5.409184950333418,4.140968679270074
-math_5unit_participation,HistGradientBoosting (tuned),12,0.4112023792680759,0.08309038387528318,0.05678864226128268
+english_5unit_participation,HistGradientBoosting (tuned, legacy),13,0.5598446561686548,0.1778393143460113,0.12843754733123905
+english_avg_grade,HistGradientBoosting (tuned, legacy),13,0.4543338344515978,4.5187248311060735,3.449280343400557
+math_avg_grade,HistGradientBoosting (tuned, legacy),11,0.41238240016341016,5.409184950333418,4.140968679270074
+math_5unit_participation,HistGradientBoosting (tuned, legacy),12,0.4112023792680759,0.08309038387528318,0.05678864226128268

@@ -67,7 +67,12 @@ def pretty(name: str) -> str:
 
 def shap_beeswarm(model, X: pd.DataFrame, target: str, cfg: dict[str, Any],
                   out_dir: Path) -> Path:
-    """TreeExplainer beeswarm for one tuned champion model."""
+    """TreeExplainer beeswarm for the supplied fitted tree model.
+
+    Callers are responsible for passing the model that should be explained —
+    run_step5.py passes the final RandomForest refit (the family selected by
+    nested_cv.py), so this figure matches the reported champion.
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     n = min(cfg["modeling"]["shap_sample"], len(X))
     Xs = X.sample(n=n, random_state=cfg["seed"]) if len(X) > n else X
@@ -94,7 +99,10 @@ def shap_importance(model, X: pd.DataFrame, target: str, cfg: dict[str, Any]) ->
 
 
 def plot_leaderboard(leaderboards: dict[str, pd.DataFrame], out_dir: Path) -> Path:
-    """Grouped bar of CV R^2 for every model across the four targets."""
+    """Grouped bar of single-pass CV R^2 for every model across the four
+    targets. Legacy: features are selected and models scored on the SAME
+    full sample, so these numbers are optimistic. Superseded by
+    ``plot_nested_leaderboard`` above, which is what the report reports."""
     out_dir.mkdir(parents=True, exist_ok=True)
     rows = []
     for target, lb in leaderboards.items():
@@ -105,7 +113,7 @@ def plot_leaderboard(leaderboards: dict[str, pd.DataFrame], out_dir: Path) -> Pa
     fig, ax = plt.subplots(figsize=(13, 7))
     sns.barplot(data=long, x="target", y="R2", hue="model", ax=ax)
     ax.axhline(0, color="black", lw=1)
-    ax.set_title("Step 5 — Cross-Validated R² Leaderboard (GroupKFold by school)\n"
+    ax.set_title("Legacy single-pass R² leaderboard (NOT reported; GroupKFold by school)\n"
                  "Full Boruta-selected SES+Budget feature set")
     ax.set_xlabel(""); ax.set_ylabel("CV R²  (higher = better)")
     ax.set_xticklabels([t.replace("_", "\n") for t in long["target"].unique()], fontsize=11)
@@ -118,8 +126,9 @@ def plot_leaderboard(leaderboards: dict[str, pd.DataFrame], out_dir: Path) -> Pa
 
 
 def plot_before_after(ablation: pd.DataFrame, out_dir: Path) -> Path:
-    """Grouped bar: tuned-HGB R^2, SES-only baseline vs Boruta-selected full set
-    (same rows, same protocol) — the Step-5 ablation study."""
+    """Grouped bar: legacy single-pass tuned-HGB R^2, SES-only baseline vs
+    Boruta-selected full set (same rows, same protocol). Superseded by
+    ``plot_nested_ablation`` above, which is what the report reports."""
     out_dir.mkdir(parents=True, exist_ok=True)
     long = ablation.melt(id_vars="target", value_vars=["R2_before", "R2_after"],
                          var_name="phase", value_name="R2")
@@ -128,8 +137,8 @@ def plot_before_after(ablation: pd.DataFrame, out_dir: Path) -> Path:
     fig, ax = plt.subplots(figsize=(13, 7))
     sns.barplot(data=long, x="target", y="R2", hue="phase", palette=[NAVY, TEAL], ax=ax)
     ax.axhline(0, color="black", lw=1)
-    ax.set_title("Ablation — does the budget dataset add information beyond SES?\n"
-                 "(identical rows, tuned HistGradientBoosting, GroupKFold by school)")
+    ax.set_title("Legacy ablation (single-pass, NOT reported) — does the budget dataset\n"
+                 "add information beyond SES? (identical rows, tuned HGB, GroupKFold by school)")
     ax.set_xlabel(""); ax.set_ylabel("CV R²  (higher = better)")
     ax.set_xticklabels([t.replace("_", "\n") for t in ablation["target"]], fontsize=11)
     ax.legend(title="", fontsize=11, loc="upper right")
@@ -140,15 +149,83 @@ def plot_before_after(ablation: pd.DataFrame, out_dir: Path) -> Path:
     return path
 
 
+def plot_nested_leaderboard(summary: pd.DataFrame, out_dir: Path) -> Path:
+    """Grouped bar of outer-fold R^2 (mean +/- sd) per model, per target.
+
+    ``summary`` is the table written by run_nested_cv.py (leaderboard_nested.csv:
+    columns target, model, R2_mean, R2_std, ...). This is the reproducible,
+    leakage-free counterpart of the older ``plot_leaderboard`` above, whose
+    numbers come from the single-pass tournament and are not the headline
+    result.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    targets = list(dict.fromkeys(summary["target"]))
+    models = list(dict.fromkeys(summary["model"]))
+    x = np.arange(len(targets))
+    width = 0.8 / max(len(models), 1)
+    palette = [NAVY, TEAL, CORAL, GOLD]
+
+    fig, ax = plt.subplots(figsize=(13, 7))
+    for i, model in enumerate(models):
+        sub = summary[summary["model"] == model].set_index("target").reindex(targets)
+        offset = (i - (len(models) - 1) / 2) * width
+        bars = ax.bar(x + offset, sub["R2_mean"], width, yerr=sub["R2_std"],
+                      capsize=3, color=palette[i % len(palette)], label=model)
+        ax.bar_label(bars, fmt="%.3f", fontsize=8.5, padding=2)
+    ax.axhline(0, color="black", lw=1)
+    ax.set_title("Nested outer-fold R² leaderboard (GroupKFold by school)\n"
+                "Every family tuned inside the same inner folds — the headline comparison")
+    ax.set_xticks(x)
+    ax.set_xticklabels([t.replace("_", "\n") for t in targets], fontsize=11)
+    ax.set_ylabel("Outer-fold R²  (mean ± sd, higher = better)")
+    ax.legend(title="Model", fontsize=10, loc="upper left")
+    plt.tight_layout()
+    path = out_dir / "nested_leaderboard.png"
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
+def plot_nested_ablation(summary: pd.DataFrame, out_dir: Path) -> Path:
+    """Grouped bar: municipal-only vs full-set outer-fold R^2, same rows.
+
+    ``summary`` is the table written by run_nested_ablation.py
+    (ablation_nested.csv: columns target, R2_municipal_mean, R2_full_mean, ...).
+    Reproducible, leakage-free counterpart of the older ``plot_before_after``.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    long = summary.melt(id_vars="target",
+                        value_vars=["R2_municipal_mean", "R2_full_mean"],
+                        var_name="phase", value_name="R2")
+    long["phase"] = long["phase"].map({"R2_municipal_mean": "Municipal only",
+                                       "R2_full_mean": "Municipal + school-level (Boruta-selected)"})
+    fig, ax = plt.subplots(figsize=(13, 7))
+    sns.barplot(data=long, x="target", y="R2", hue="phase", palette=[NAVY, TEAL], ax=ax)
+    ax.axhline(0, color="black", lw=1)
+    ax.set_title("Nested ablation — does the school-level data add information beyond SES?\n"
+                "(identical rows, RandomForest, GroupKFold by school, same protocol as the leaderboard)")
+    ax.set_xlabel(""); ax.set_ylabel("Outer-fold R²  (mean, higher = better)")
+    ax.set_xticklabels([t.replace("_", "\n") for t in summary["target"]], fontsize=11)
+    ax.legend(title="", fontsize=11, loc="upper right")
+    plt.tight_layout()
+    path = out_dir / "nested_ablation.png"
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
 def plot_residual_histograms(resid_inputs: dict[str, dict], cfg: dict[str, Any],
                              out_dir: Path) -> Path:
-    """Out-of-fold residual distribution (histogram + KDE) per target.
+    """Out-of-fold residual distribution (histogram + KDE) per target, for the
+    LEGACY single-pass tuned-HGB model. NOT used by the report -- Figure 1
+    comes from ``plot_nested_residuals`` below, built on nested_cv.py's
+    out-of-fold predictions for the actually-selected family.
 
-    ``resid_inputs[target]`` carries the tuned champion estimator plus that
-    target's selected feature matrix, response, and school groups. Residuals are
-    computed under the SAME GroupKFold(semel) CV used for every reported metric,
-    so the picture is an honest out-of-fold diagnostic: a distribution centred on
-    zero means the model is unbiased, and the spread equals the target's RMSE.
+    ``resid_inputs[target]`` carries the legacy tuned HGB estimator plus that
+    target's selected feature matrix, response, and school groups. Residuals
+    are computed under GroupKFold(semel) CV, so the picture is an honest
+    out-of-fold diagnostic for THIS model: a distribution centred on zero
+    means the model is unbiased, and the spread equals the target's RMSE.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     n_splits = cfg["modeling"]["cv_splits"]
@@ -186,8 +263,8 @@ def plot_residual_histograms(resid_inputs: dict[str, dict], cfg: dict[str, Any],
     fig.tight_layout(rect=(0, 0, 1, 0.88))
     fig.legend(handles=legend_handles, loc="upper center", ncol=3,
                frameon=False, fontsize=11, bbox_to_anchor=(0.5, 0.925))
-    fig.suptitle("Out-of-fold residual distributions — tuned HistGradientBoosting champion\n"
-                 "all centred on zero, confirming an unbiased fit (GroupKFold by school)",
+    fig.suptitle("Out-of-fold residual distributions — legacy tuned HistGradientBoosting\n"
+                 "(single-pass path; NOT the reported model -- see residuals_nested.png)",
                  fontsize=13.5, color=NAVY, y=0.995)
     path = out_dir / "residual_histograms.png"
     fig.savefig(path, dpi=150, bbox_inches="tight")

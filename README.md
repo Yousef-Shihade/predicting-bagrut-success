@@ -240,7 +240,7 @@ same nested evaluation on the same rows.*
 > cluster every time. Full detail in
 > [`step_5_predictive_modeling_explainability/`](step_5_predictive_modeling_explainability/README.md).
 
-![Ablation before/after](step_5_predictive_modeling_explainability/graphs/ablation_before_after.png)
+![Nested ablation](step_5_predictive_modeling_explainability/graphs/nested_ablation.png)
 
 ---
 
@@ -261,10 +261,11 @@ and they funnel markedly more pupils into advanced Math & English tracks.
 
 ![Low-SES overachievers](step_4_preprocessing_outliers_imputation_experiment/graphs/low_ses_overachievers_profile.png)
 
-**Cross-validated model leaderboard** — R² by model across the four targets,
-full SES+Budget feature set.
+**Nested cross-validated model leaderboard** — outer-fold R² by model across
+the four targets, each family tuned inside the same inner folds (the headline
+comparison, Table 3 in the report).
 
-![Model leaderboard](step_5_predictive_modeling_explainability/graphs/models_performance.png)
+![Model leaderboard](step_5_predictive_modeling_explainability/graphs/nested_leaderboard.png)
 
 **Residual diagnostics** — built from **nested out-of-fold predictions**. Every
 mean residual is within 0.03 of zero, so there is no material *global* bias
@@ -272,16 +273,17 @@ mean residual is within 0.03 of zero, so there is no material *global* bias
 
 ![Residual histograms](step_5_predictive_modeling_explainability/graphs/residuals_nested.png)
 
-**SHAP across all four targets** — the school-level `nurture_quintile` leads
-every outcome (21.8%–41.6% of attribution), while municipal `cluster` never
-exceeds 4.6% and is **not selected at all** for `english_avg_grade`. Same
-construct, different granularity.
+**SHAP across all four targets** (RandomForest — the family the nested
+evaluation selects) — the school-level `nurture_quintile` leads every outcome
+(19.7%–36.2% of attribution), while municipal `cluster` never exceeds 5.3% and
+is **not selected at all** for `english_avg_grade`. Same construct, different
+granularity.
 
 ![SHAP core ranking](step_5_predictive_modeling_explainability/graphs/shap_core_ranking.png)
 
 **SHAP explainability** — for the target least explained by SES alone
 (`math_5unit_participation`), school-level attributes (`nurture_quintile`,
-`log_school_size`, `transport_per_student`) outrank the municipal cluster.
+`transport_per_student`, `log_school_size`) outrank the municipal cluster.
 
 ![SHAP example](step_5_predictive_modeling_explainability/graphs/shap_beeswarm_math_5unit_participation.png)
 
@@ -322,6 +324,16 @@ python step_1_ingestion_standardization/code/run_step1.py
 python step_2_data_merging_integration/code/run_step2.py
 python step_3_feature_engineering_target_setup/code/run_step3.py
 python step_4_preprocessing_outliers_imputation_experiment/code/run_step4.py
+
+# 4. Step 5 — run the HEADLINE nested evaluation first (leakage-free; this is
+#    the source of Tables 3 and 5 and every R^2 quoted below)
+python step_5_predictive_modeling_explainability/code/run_nested_cv.py
+python step_5_predictive_modeling_explainability/code/run_nested_ablation.py
+python step_5_predictive_modeling_explainability/code/run_outlier_sensitivity.py
+
+# 5. Descriptive full-data VIF, Boruta and SHAP artifacts only -- NOT the
+#    source of the reported predictive-performance estimates (see the Step 5
+#    README's "which numbers to quote" note)
 python step_5_predictive_modeling_explainability/code/run_step5.py
 ```
 
@@ -346,7 +358,7 @@ python step_5_predictive_modeling_explainability/code/run_step5.py
 |---|---|---|
 | Imputation | **MICE** (IterativeImputer, 25-iteration robustness) | Step 4 |
 | Outlier detection | **Isolation Forest**, **Local Outlier Factor** | Step 4 |
-| Modeling | **SGD** (linear SVM), Ridge, RandomForest, **HistGradientBoosting** | Step 5 |
+| Modeling | **SGDRegressor** (linear), Ridge, RandomForest, **HistGradientBoosting** | Step 5 |
 | Feature selection | **Boruta** (49-column candidate space) | Step 5 |
 | Explainability | **SHAP** | Step 5 |
 | Collinearity | **Iterative VIF pruning** | Step 5 |

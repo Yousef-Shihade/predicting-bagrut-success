@@ -113,7 +113,7 @@ if __name__ == "__main__":
     cfg = load_config()
     df = load_cleaned(cfg)
     feats = cfg["features"]
-    print(f"[io_load] cleaned (outliers excluded): {df.shape}")
+    print(f"[io_load] cleaned (outliers retained by default): {df.shape}")
     for t in cfg["targets"]:
         X, y, g = build_xy(df, t, feats["numeric"], feats["categorical"], feats["group_col"])
         print(f"  {t:30s} X={X.shape}  y={len(y)}  groups={g.nunique()}")

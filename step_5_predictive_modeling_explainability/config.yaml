@@ -100,7 +100,13 @@ modeling:
   # run inside these, on outer-training rows only, so no evaluation fold ever
   # influences a modelling decision.
   inner_cv_splits: 3
-  champion: "hist_gradient_boosting"
+  # NOTE: no config key selects "the champion" -- run_step5.py's legacy path
+  # always tunes HistGradientBoosting (modeling.tune_champion) for its own
+  # single-pass leaderboard, and separately tunes RandomForest
+  # (modeling.tune_final_random_forest) for the descriptive SHAP figures,
+  # because that is the family nested_cv.py selects on every target. The
+  # actual headline champion is decided per-target, per-fold by
+  # nested_cv.nested_evaluate() -- see leaderboard_nested.csv.
   tuning_iter: 25
   shap_sample: 1500
 

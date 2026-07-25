@@ -44,6 +44,7 @@ import pandas as pd  # noqa: E402
 from sklearn.base import clone  # noqa: E402
 from sklearn.model_selection import GroupKFold, RandomizedSearchCV  # noqa: E402
 
+import explain  # noqa: E402
 import nested_cv  # noqa: E402
 from io_load import build_xy, load_cleaned, load_config, resolve  # noqa: E402
 
@@ -133,9 +134,13 @@ def main() -> None:
     pd.DataFrame(fold_rows).to_csv(models_dir / "ablation_nested_per_fold.csv",
                                    index=False, encoding=enc)
 
+    graphs_dir = resolve(cfg["paths"]["out_graphs"])
+    explain.plot_nested_ablation(summary, graphs_dir)
+
     print("\n" + "=" * 78)
     print(f"mean dR2 across the four targets: {summary['dR2_mean'].mean():+.4f}")
-    print("[SAVED] ablation_nested.csv, ablation_nested_per_fold.csv")
+    print(f"[SAVED] ablation_nested.csv, ablation_nested_per_fold.csv, "
+          f"nested_ablation.png -> {graphs_dir}")
     print("=" * 78)
 
 
