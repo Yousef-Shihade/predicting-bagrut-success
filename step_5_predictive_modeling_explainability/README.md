@@ -6,7 +6,8 @@
 > The modelling stage. Collinearity is handled by **iterative VIF pruning**,
 > features are chosen per target by **Boruta** over a 49-column SES+budget
 > candidate space, and four model families compete under **nested
-> GroupKFold(`semel`)** cross-validation with an equal tuning budget each. A
+> GroupKFold(`semel`)** cross-validation, each tuned under the same protocol
+> with a model-specific search space and up to 25 candidate configurations. A
 > dedicated **ablation study** then isolates how much the institutional data
 > contributes over municipal socioeconomics alone — the study's central
 > quantitative claim.
@@ -142,13 +143,18 @@ OUTER GroupKFold(semel)              <- untouched evaluation folds
   within each outer TRAINING fold only:
       iterative VIF pruning
       Boruta selection
-      RandomizedSearchCV (INNER GroupKFold, 25 draws)
+      RandomizedSearchCV (INNER GroupKFold, up to 25 candidates)
   -> score once on the held-out OUTER fold
 ```
 
-**Every family gets the same 25-draw budget**, so the comparison is fair. (An
-earlier version tuned only HGB, which made "HGB wins" an artefact of unequal
-effort rather than a property of the data.)
+**Every family is tuned within the same inner folds** using a model-specific
+search space and up to 25 candidate configurations, so the comparison is fair.
+Ridge has only 7 possible `alpha` values (a 1-D grid), so `RandomizedSearchCV`
+evaluates all 7 exhaustively rather than sampling 25 — sklearn caps `n_iter` at
+the grid size and does not sample with replacement. Every other family's space
+is large enough that 25 draws are genuinely a random subset. (An earlier version
+tuned only HGB, which made "HGB wins" an artefact of unequal effort rather than
+a property of the data.)
 
 ### Leaderboard — outer-fold R² (mean ± sd over 5 folds)
 
@@ -286,8 +292,9 @@ protocol, not evidence of a causal effect of school resources.
       features confirmed per target, 9 shared by all four.
 - [x] **Nested** GroupKFold: VIF, Boruta and tuning run inside outer *training*
       folds only, so no evaluation fold influences a modelling decision.
-- [x] **All four families tuned with an equal 25-draw budget**; RandomForest is
-      selected on every target. (The earlier "HGB champion" result came from
+- [x] **All four families tuned under the same protocol** (model-specific search
+      space, up to 25 candidates, Ridge exhaustive over its 7 values); RandomForest
+      is selected on every target. (The earlier "HGB champion" result came from
       tuning only HGB.)
 - [x] Results reported as **mean ± sd across outer folds**, with the full
       per-fold audit trail in `nested_per_fold.csv`.
