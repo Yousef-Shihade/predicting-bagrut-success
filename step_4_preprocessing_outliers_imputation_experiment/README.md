@@ -111,10 +111,19 @@ institutional-resourcing anomalies are caught alongside outcome ones.
 
 Jaccard overlap = **0.172** — low, confirming the two detectors genuinely
 capture different notions of "anomalous" rather than duplicating each other.
-Only the **49 consensus** records are flagged
-(`outlier_consensus`) — none are deleted from the data; they are simply
-**excluded from model training** in Step 5 via a config switch, so they remain
-fully auditable.
+Only the **49 consensus** records are flagged (`outlier_consensus`); none are
+deleted from the data.
+
+> ⚠️ **These rows are KEPT in the primary analysis.** The 9-feature detector
+> space above includes outcome variables, so dropping the flagged rows would
+> condition the evaluation sample on the target and could quietly delete
+> legitimate high or low performers. Step 5 therefore loads the data with
+> `drop_outliers=False` by default. The exclusion was re-run as a **sensitivity
+> check** instead: dropping all 49 moves mean nested R² by **+0.001** across the
+> four targets (per-target −0.023 to +0.013), well inside the fold-to-fold
+> standard deviation — see `step_5_.../models/outlier_sensitivity.csv`. The
+> choice is immaterial to the findings, and the flag stays in the data so either
+> variant remains auditable.
 
 ![outlier mapping](graphs/outlier_detection_mapping.png)
 

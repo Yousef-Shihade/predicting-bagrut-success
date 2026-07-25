@@ -101,6 +101,17 @@ design, where every predictor was a municipality-level aggregate:
 measure, so the project can now contrast *school* disadvantage against *municipal*
 disadvantage — the core of this project's research question.
 
+> ⚠️ **Direction — read this before interpreting any model.** This is the
+> Ministry's *nurture* (טיפוח) index, so **HIGHER = MORE disadvantaged**. It is
+> not a "quality" score. Verified against the outcomes: mean combined grade falls
+> monotonically **85.3 → 74.1** from quintile 1 to quintile 5, so quintile 1 =
+> *least* disadvantaged. The same note is in the `clean_text.py` docstring.
+> Getting this backwards flips the sign of the headline finding in Step 5.
+>
+> The 85.5 % coverage above is over all **4,718 institutions in the raw budget
+> file**. In the merged school-year modelling table the field is missing for
+> **11.9 %** of rows — a different denominator, not a conflicting number.
+
 ### Columns excluded up front (verified all-zero, documented not hidden)
 - `תקציב גפ"ן` (Gefen budget) — grand total = 0 across the entire workbook
 - `שעות הדרכה` (guidance hours) — 0 % non-zero among our schools
