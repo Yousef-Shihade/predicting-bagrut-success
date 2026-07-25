@@ -10,7 +10,6 @@ math_avg_grade,nurture_quintile,1
 math_avg_grade,avg_class_size,1
 math_avg_grade,log_school_size,1
 math_avg_grade,supervision_Haredi,1
-english_avg_grade,cluster,1
 english_avg_grade,log_population,1
 english_avg_grade,tuition_per_student,1
 english_avg_grade,perimeter_per_student,1

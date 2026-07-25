@@ -260,12 +260,21 @@ def plot_shap_core_ranking(importances: dict[str, pd.Series], out_dir: Path) -> 
     core = [f for f in importances[next(iter(importances))].index
             if all(f in imp.index for imp in importances.values())]
 
+    # `cluster` is the study's comparison point, so it is always shown even when
+    # it falls out of the shared core (Boruta rejects it for some targets). A
+    # target where it was never selected simply contributes a zero-height bar,
+    # which is itself the finding.
+    focus = "cluster"
+    if focus not in core and any(focus in imp.index for imp in importances.values()):
+        core = core + [focus]
+
     rows = []
     for target, imp in importances.items():
         total = float(imp.sum())
         for feat in core:
+            val = float(imp[feat]) if feat in imp.index else 0.0
             rows.append({"feature": feat, "target": target,
-                         "share": 100.0 * float(imp[feat]) / total})
+                         "share": 100.0 * val / total})
     long = pd.DataFrame(rows)
     order = (long.groupby("feature")["share"].mean()
              .sort_values(ascending=False).index.tolist())
@@ -282,7 +291,9 @@ def plot_shap_core_ranking(importances: dict[str, pd.Series], out_dir: Path) -> 
         ypos = np.arange(len(order))
         ax.barh(ypos, sub["share"].to_numpy(), color=colors, height=0.70, alpha=0.9)
         for i, v in enumerate(sub["share"].to_numpy()):
-            ax.text(v + 0.8, i, f"{v:.1f}", va="center", fontsize=12, color="#333333")
+            label = "not selected" if v == 0 else f"{v:.1f}"
+            ax.text(v + 0.8, i, label, va="center",
+                    fontsize=10 if v == 0 else 12, color="#333333")
         ax.set_yticks(ypos)
         ax.set_yticklabels([pretty(f) for f in order], fontsize=11)
         ax.invert_yaxis()
@@ -293,9 +304,12 @@ def plot_shap_core_ranking(importances: dict[str, pd.Series], out_dir: Path) -> 
     for ax in axes[1]:
         ax.set_xlabel("Share of that target's total mean |SHAP|  (%)", fontsize=13)
 
-    fig.suptitle("Feature importance per target (SHAP, shared 10-feature core)\n"
+    n_core = len(core) - (1 if focus in core and not all(
+        focus in imp.index for imp in importances.values()) else 0)
+    fig.suptitle(f"Feature importance per target (SHAP, {n_core}-feature shared core"
+                 f" plus municipal cluster)\n"
                  "navy = school-level nurture index, red = municipal cluster",
-                 fontsize=16, color=NAVY, y=1.01)
+                 fontsize=15, color=NAVY, y=1.01)
     fig.tight_layout(rect=(0, 0, 1, 0.95))
     path = out_dir / "shap_core_ranking.png"
     fig.savefig(path, dpi=150, bbox_inches="tight")

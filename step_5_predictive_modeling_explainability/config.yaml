@@ -70,6 +70,12 @@ features:
     # assuming a fixed linear trend per year, an assumption we found no
     # justification for on a 4-level variable.
     - "year"
+  # Column naming the Step 4 consensus anomalies. This names the flag; it does
+  # NOT switch exclusion on. load_cleaned() keeps these rows by default because
+  # the detector's feature space includes outcome variables, so dropping them
+  # would condition the sample on the target. run_outlier_sensitivity.py uses
+  # this flag to report the exclusion as a sensitivity check (effect: +0.001
+  # mean R2, i.e. negligible).
   exclude_outlier_flag: "outlier_consensus"
 
 # --- Collinearity: iterative VIF pruning ------------------------------------
