@@ -77,9 +77,10 @@ We model four school-level targets: **average Bagrut grade** and **5-unit
 > Step 4 / Step 5 READMEs linked inline.
 
 **Main — Yes.** Municipal socioeconomic status and school-level institutional
-resources, **combined**, meaningfully predict Bagrut outcomes: cross-validated
-R² of **0.42–0.55** across all four targets, versus **0.06–0.23** for municipal
-SES alone — a **~3× mean improvement** (ΔR² = +0.320). See the
+resources, **combined**, meaningfully predict Bagrut outcomes: **nested**
+cross-validated R² of **0.40–0.56** across all four targets, versus
+**0.06–0.23** for municipal SES alone — a **~3× mean improvement**
+(ΔR² = +0.309, improving in all 20 outer folds). See the
 [Modeling Leaderboard](#-modeling-leaderboard) and [Ablation Study](#-ablation-study--does-institutional-funding-add-information-beyond-ses).
 
 **Secondary A — Math is the more resilient subject**, and yes, low-SES
@@ -187,51 +188,52 @@ outliers (Step 4) · 87/460 (18.9%) low-SES "overachiever" schools identified
 
 ## 🏆 Modeling Leaderboard
 
-Final **cross-validated** performance (5-fold **`GroupKFold` grouped by
-school** so a school's multiple years never leak across folds). Champion =
-**tuned HistGradientBoosting** on the full Boruta-selected SES+Budget feature
-set, which won every target.
+**Nested** `GroupKFold(semel)` cross-validation: an outer loop supplies untouched
+evaluation folds, while VIF pruning, Boruta selection and hyperparameter tuning
+all run **inside outer training folds only**. All four families receive an
+**equal 25-draw** search, so the comparison is fair.
 
-| 🎯 Target | R² | RMSE | MAE |
-|---|--:|--:|--:|
-| **english_5unit_participation** | **0.545** | 0.178 | 0.129 |
-| `math_avg_grade` | 0.431 | 5.273 | 4.059 |
-| `english_avg_grade` | 0.428 | 4.584 | 3.502 |
-| `math_5unit_participation` | 0.421 | 0.079 | 0.056 |
+Outer-fold R² (mean ± sd over 5 folds):
 
-> 🥇 Every model family scores **positive R² across the board** on this
-> feature set — even RandomForest, typically the most overfit-prone model on
-> a narrow feature space, performs solidly here (see the ablation study below
-> for how much the SES+Budget feature set adds over SES alone).
+| 🎯 Target | Ridge | SGD | **Random Forest** | HistGB |
+|---|--:|--:|--:|--:|
+| `math_avg_grade` | .405±.066 | .402±.058 | **.420±.050** | .414±.054 |
+| `english_avg_grade` | .410±.045 | .410±.043 | **.452±.042** | .441±.043 |
+| `math_5unit_participation` | .323±.043 | .323±.041 | **.395±.037** | .378±.030 |
+| `english_5unit_participation` | .502±.036 | .504±.037 | **.557±.053** | .539±.064 |
+
+**RandomForest is selected on every target.** Errors in original units: MAE
+**4.11 / 3.45** grade points (Math / English) and **5.8 / 13.1** percentage
+points for advanced participation. Source: `models/leaderboard_nested.csv`.
+
+> 🥇 On the **grade** targets all four families sit within ~1 sd of each other,
+> so the *features* matter far more than the algorithm. The trees separate more
+> clearly on **participation**, where the outcome is bounded and less linear.
 
 ---
 
 ## 🎯 Ablation Study — Does Institutional Funding Add Information Beyond SES?
 
-For every target we tune HistGradientBoosting **twice on identical rows**:
-once on the original SES-only feature set (`cluster`, `log_population`,
-`locality_form`, `year`) and once on whatever **Boruta** selected from the
-full SES+budget candidate space (49 encoded columns). Same rows, same
-GroupKFold folds, same tuning protocol — so the R² delta is attributable
-**only** to the extra information.
+Under the **same nested protocol**, RandomForest is evaluated **twice on
+identical rows**: once on municipal features only (`cluster`, `log_population`,
+`locality_form`, `year`) and once on the full candidate set with selection
+performed inside each training fold. Only the available information differs.
 
-| 🎯 Target | SES only | **SES + Budget (Boruta-selected)** | **ΔR²** |
-|---|--:|--:|--:|
-| `math_avg_grade` | 0.138 | **0.458** | **+0.320** |
-| `english_avg_grade` | 0.199 | **0.455** | **+0.256** |
-| `math_5unit_participation` | 0.058 | **0.439** | **+0.381** |
-| `english_5unit_participation` | 0.229 | **0.549** | **+0.321** |
+| 🎯 Target | Rows | Municipal | **Full set** | **ΔR²** | Folds improved |
+|---|--:|--:|--:|--:|--:|
+| `math_avg_grade` | 2,995 | .109±.019 | **.420±.050** | **+.311±.040** | 5/5 |
+| `english_avg_grade` | 2,963 | .196±.028 | **.452±.042** | **+.256±.034** | 5/5 |
+| `math_5unit_participation` | 3,221 | .055±.033 | **.395±.037** | **+.340±.039** | 5/5 |
+| `english_5unit_participation` | 3,226 | .229±.050 | **.557±.053** | **+.328±.043** | 5/5 |
 
-*These values differ slightly from the leaderboard above because the ablation
-restricts both arms to the row subset where **both** feature sets are complete —
-a fair before/after comparison requires identical rows. Quote the leaderboard for
-**model performance**, and ΔR² here for **how much the budget data adds**.*
+*The Full-set column matches the leaderboard exactly, because both come from the
+same nested evaluation on the same rows.*
 
-> 📈 **Mean ΔR² = +0.320** — every target's explanatory power **more than
-> doubled**. Five budget-derived ratios (tuition, perimeter, projects,
-> purchases, and transport per student) are confirmed by Boruta for **every
-> single target**, and the Ministry's own **school-level** disadvantage
-> ranking (`nurture_quintile`) is, by a wide margin, the **single most
+> 📈 **Mean ΔR² = +0.309**, holding in **all 20 outer folds** (5 × 4 targets).
+> Five budget-derived ratios (tuition, perimeter, projects, purchases, and
+> transport per student) are confirmed by Boruta for **every single target**,
+> and the Ministry's own **school-level** disadvantage ranking
+> (`nurture_quintile`) is, by a wide margin, the **single most
 > influential feature in every SHAP ranking** — ahead of the municipal
 > cluster every time. Full detail in
 > [`step_5_predictive_modeling_explainability/`](step_5_predictive_modeling_explainability/README.md).
@@ -262,14 +264,16 @@ full SES+Budget feature set.
 
 ![Model leaderboard](step_5_predictive_modeling_explainability/graphs/models_performance.png)
 
-**Residual diagnostics** — out-of-fold residuals for every tuned champion are
-centred on zero (unbiased), with each target's spread matching its RMSE.
+**Residual diagnostics** — built from **nested out-of-fold predictions**. Every
+mean residual is within 0.03 of zero, so there is no material *global* bias
+(subgroup and calibration bias are not ruled out).
 
-![Residual histograms](step_5_predictive_modeling_explainability/graphs/residual_histograms.png)
+![Residual histograms](step_5_predictive_modeling_explainability/graphs/residuals_nested.png)
 
 **SHAP across all four targets** — the school-level `nurture_quintile` leads
-every outcome (22.7%–40.8% of attribution), while municipal `cluster` never
-exceeds 4.9%. Same construct, different granularity.
+every outcome (21.8%–41.6% of attribution), while municipal `cluster` never
+exceeds 4.6% and is **not selected at all** for `english_avg_grade`. Same
+construct, different granularity.
 
 ![SHAP core ranking](step_5_predictive_modeling_explainability/graphs/shap_core_ranking.png)
 
@@ -287,14 +291,14 @@ Across three independent methods — **iterative VIF/collinearity analysis**,
 **Boruta feature confirmation**, and **SHAP attribution** — the same picture
 emerges:
 
-> **Municipal socioeconomic status alone is a weak-to-moderate predictor**
-> of Bagrut outcomes (R² 0.06–0.23 in the SES-only arm). **Adding school-level
+> **Municipal socioeconomic status alone is a weak predictor** of Bagrut
+> outcomes (R² 0.055–0.229 in the municipal-only arm). **Adding school-level
 > institutional resources — budget ratios, class size, sector, supervision,
 > district, and above all the Ministry's own school-level disadvantage ranking
-> — roughly triples explanatory power** (R² 0.42–0.55). The variance municipal
-> SES cannot explain is not noise: a large share of it is **institutional and
-> structural school identity**, captured from the start of this pipeline
-> rather than as an afterthought.
+> — roughly triples predictive power** (R² 0.395–0.557, mean ΔR² = **+0.309**,
+> improving in all 20 outer folds). The school-level variables carry substantial
+> predictive information the municipal ones miss. This is an **associational**
+> result under the evaluated protocol, not a causal claim.
 
 In short: **school-level circumstances predict Bagrut outcomes better than the
 wealth of the town a school sits in** — and that gap is the project's central,
