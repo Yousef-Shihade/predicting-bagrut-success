@@ -6,11 +6,10 @@
 > The modelling stage. Collinearity is handled by **iterative VIF pruning**,
 > features are chosen per target by **Boruta** over a 49-column SES+budget
 > candidate space, and four model families compete under **nested
-> GroupKFold(`semel`)** cross-validation, each tuned under the same protocol
-> with a model-specific search space and up to 25 candidate configurations. A
-> dedicated **ablation study** then isolates how much the institutional data
-> contributes over municipal socioeconomics alone — the study's central
-> quantitative claim.
+> GroupKFold(`semel`)** cross-validation, using model-specific hyperparameter
+> search spaces under the same nested protocol. A dedicated **ablation study**
+> then isolates how much the institutional data contributes over municipal
+> socioeconomics alone — the study's central quantitative claim.
 >
 > **⚠️ Which numbers to quote.** `run_nested_cv.py` produces the **headline,
 > leakage-free** results (`leaderboard_nested.csv`): feature selection and
@@ -147,12 +146,12 @@ OUTER GroupKFold(semel)              <- untouched evaluation folds
   -> score once on the held-out OUTER fold
 ```
 
-**Every family is tuned within the same inner folds** using a model-specific
-search space and up to 25 candidate configurations, so the comparison is fair.
-Ridge has only 7 possible `alpha` values (a 1-D grid), so `RandomizedSearchCV`
-evaluates all 7 exhaustively rather than sampling 25 — sklearn caps `n_iter` at
-the grid size and does not sample with replacement. Every other family's space
-is large enough that 25 draws are genuinely a random subset. (An earlier version
+**All four families are tuned inside the same inner folds using model-specific
+search spaces and up to 25 candidate configurations. Ridge's seven
+regularisation values are evaluated exhaustively** (sklearn caps `n_iter` at the
+grid size rather than sampling with replacement, so its 1-D, 7-value grid is
+covered in full). Every other family's space is large enough that 25 draws are
+genuinely a random subset. (An earlier version
 tuned only HGB, which made "HGB wins" an artefact of unequal effort rather than
 a property of the data.)
 

@@ -190,10 +190,10 @@ outliers (Step 4) · 87/460 (18.9%) low-SES "overachiever" schools identified
 
 **Nested** `GroupKFold(semel)` cross-validation: an outer loop supplies untouched
 evaluation folds, while VIF pruning, Boruta selection and hyperparameter tuning
-all run **inside outer training folds only**. Every family is tuned within the
-same inner folds using a model-specific search space and up to 25 candidate
-configurations; Ridge's 7 regularisation values are evaluated exhaustively
-(sklearn caps `n_iter` at the grid size), so the comparison is fair.
+all run **inside outer training folds only**. All four families are tuned
+inside the same inner folds using model-specific search spaces and up to 25
+candidate configurations. Ridge's seven regularisation values are evaluated
+exhaustively.
 
 Outer-fold R² (mean ± sd over 5 folds):
 
