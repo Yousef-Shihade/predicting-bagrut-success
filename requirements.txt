@@ -10,8 +10,10 @@
 # Tested on Anaconda Python 3.11 (Windows). Install with:
 #     pip install -r requirements.txt
 #
-# NOTE: the modeling champion is scikit-learn's HistGradientBoostingRegressor;
-# no external gradient-boosting library (e.g. xgboost/lightgbm) is used, so none
+# NOTE: all four candidate model families (Ridge, SGD, RandomForest,
+# HistGradientBoostingRegressor) are built into scikit-learn; RandomForest is
+# selected on every target under the nested evaluation (see Step 5 README). No
+# external gradient-boosting library (e.g. xgboost/lightgbm) is used, so none
 # is listed here. Add one only if a future extension actually imports it.
 # =============================================================================
 

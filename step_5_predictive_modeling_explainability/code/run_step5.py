@@ -76,7 +76,7 @@ def main() -> None:
     print(_hr())
 
     df = load_cleaned(cfg)
-    print(f"\n[DATA] modeling rows {len(df)} (Step-4 consensus outliers excluded)")
+    print(f"\n[DATA] modeling rows {len(df)} (Step-4 consensus outliers retained; see README sensitivity check)")
     print(f"    candidate numeric ({len(feats['numeric'])}): {feats['numeric']}")
     print(f"    candidate categorical ({len(feats['categorical'])}): {feats['categorical']}")
 

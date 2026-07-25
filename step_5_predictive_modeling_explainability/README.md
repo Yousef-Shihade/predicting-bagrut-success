@@ -60,12 +60,12 @@ resolve another's inflation, which a naive one-pass cutoff would miss entirely.
 
 | Step | Dropped | VIF at drop |
 |---|---|--:|
-| 1 | `teaching_budget_per_student` | 76.57 |
-| 2 | `total_budget_per_student` | 26.28 |
-| 3 | `index_value` | 20.59 |
+| 1 | `teaching_budget_per_student` | 76.34 |
+| 2 | `total_budget_per_student` | 27.99 |
+| 3 | `index_value` | 20.30 |
 
 **12 numeric features survive.** The chart shows *why* iteration matters:
-`cluster` starts at VIF 20.0 (would look collinear on a naive single pass) but
+`cluster` starts at VIF 19.6 (would look collinear on a naive single pass) but
 **survives**, because its inflation was entirely caused by `index_value` — once
 that's dropped, cluster's recomputed VIF falls well under the threshold. This
 correctly identifies `cluster ↔ index_value` as a **mutual** redundant pair and
