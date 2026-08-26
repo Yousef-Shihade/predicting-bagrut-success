@@ -15,6 +15,11 @@
 
 **Authors:** Yousef Shihade & Shada Esawi · *Data Science Lab — Final Project, 2026*
 
+📄 **[Read the full report (PDF, 8 pages)](report/Report.pdf)** — the written
+write-up behind this repository: data sources and linkage, cleaning and
+imputation, model comparison under nested cross-validation, feature selection,
+SHAP explainability, and the ablation that answers the research question.
+
 ---
 
 ## 📜 Project Evolution
@@ -153,6 +158,7 @@ and graphs, and consumes the previous stage's output.
 ```
 predicting-bagrut-success/
 ├── README.md  ·  LICENSE  ·  requirements.txt
+├── report/                                    # final write-up (PDF + figures)
 ├── datasets/                                  # raw inputs (git-ignored)
 ├── step_1_ingestion_standardization/
 ├── step_2_data_merging_integration/
